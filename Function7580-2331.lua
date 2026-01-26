@@ -142,29 +142,15 @@ Window:OnDestroy(function()
 end)
 
 Window:Tag({
-    Title = "V1.5.0",
+    Title = "V1.6.0",
     Color = Color3.fromHex("#663399")
 })
 
-
+-- Reorganized tabs start here
 local Tab = Window:Tab({
     Title = "Home",
     Icon = "house",
     Locked = false,
-})
-
-local Dialog = Window:Dialog({
-    Icon = "upload",
-    Title = "Update Log",
-    Content = "Added Aimbot build into script. (enable aimbot, Show FOV, FOV Color, Unnlock FOV, Team Check, Wall Check, Aim Body Part",
-    Buttons = {
-        {
-            Title = "Continue",
-            Callback = function()
-                print("Continued")
-            end,
-        },
-    },
 })
 
 local Button = Tab:Button({
@@ -212,6 +198,20 @@ local Button = Tab:Button({
     end
 })
 
+local Button = Tab:Button({
+    Title = "Github",
+    Desc = "Copy Github Link",
+    Locked = false,
+    Callback = function()
+         setclipboard("https://github.com/yeahblxr/-Midnight-hub/blob/main/Midnight%20Hub")
+            WindUI:Notify({
+    Title = "Copied!",
+    Content = "Github link copied to clipboard",
+    Duration = 2,
+    Icon = "check",
+})
+    end
+})
 
 local Tab = Window:Tab({
     Title = "Player",
@@ -280,668 +280,6 @@ local Toggle = Tab:Toggle({
     end,
 })
 
--- Respawn at Death area script start
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-
-local deathPosition = nil
-local characterAddedConnection = nil
-local deathConnections = {} 
-
-local function onCharacterDied(character)
-    if not character then return end
-    local hrp = character:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        deathPosition = hrp.Position
-    end
-end
-
-local function cleanupCharacterConnections(character)
-    if deathConnections[character] then
-        deathConnections[character]:Disconnect()
-        deathConnections[character] = nil
-    end
-end
-
-local function onCharacterAdded(character)
-    cleanupCharacterConnections(character)
-
-    local humanoid = character:WaitForChild("Humanoid")
-    deathConnections[character] = humanoid.Died:Connect(function()
-        onCharacterDied(character)
-    end)
-
-    if deathPosition then
-        local hrp = character:WaitForChild("HumanoidRootPart")
-        if hrp then
-            hrp.CFrame = CFrame.new(deathPosition + Vector3.new(0, 5, 0))
-        end
-    end
-
-    character.AncestryChanged:Connect(function(_, parent)
-        if not parent then
-            cleanupCharacterConnections(character)
-        end
-    end)
-end
-
-local Toggle = Tab:Toggle({
-    Title = "Respawn At death point",
-    Desc = "Respawns you at the area where you died",
-    Icon = "rotate-ccw",
-    Type = "Checkbox",
-    Default = false,
-    Callback = function(enabled) 
-        if enabled then
-            deathPosition = nil 
-            characterAddedConnection = player.CharacterAdded:Connect(onCharacterAdded)
-            if player.Character then
-                onCharacterAdded(player.Character)
-            end
-        else
-            if characterAddedConnection then
-                characterAddedConnection:Disconnect()
-                characterAddedConnection = nil
-            end
-            deathPosition = nil
-            for character, conn in pairs(deathConnections) do
-                if conn then
-                    conn:Disconnect()
-                end
-                deathConnections[character] = nil
-            end
-        end
-    end,
-})
-
---[[ Fov Changer script start
--- helper clamp in case WindUI or environment doesn't have one
-local function clamp(val, min, max)
-    if val < min then return min end
-    if val > max then return max end
-    return val
-end
-
--- initialize with current FOV (clamped to allowed range)
-local initialFov = clamp(tonumber(workspace.CurrentCamera.FieldOfView) or 70, 70, 120)
-
-local Input = Tab:Input({
-    Title = "Fov Changer",
-    Desc = "Change your fov (70-120)",
-    Value = tostring(initialFov),
-    InputIcon = "file-json",
-    Type = "Input", -- could also be "Textarea"
-    Placeholder = "Enter FOV (70-120)",
-    Callback = function(Text) 
-        local num = tonumber(Text)
-        if not num then
-            WindUI:Notify({
-                Title = "Invalid Value",
-                Content = "Please enter a number between 70 and 120.",
-                Duration = 2,
-                Icon = "ban"
-            })
-            return
-        end
-
-        local newFov = clamp(num, 70, 120)
-        workspace.CurrentCamera.FieldOfView = newFov
-
-        -- Only show notify if input was out of range and got clamped
-        if newFov ~= num then
-            WindUI:Notify({
-                Title = "FOV Adjusted",
-                Content = string.format("FOV was clamped to %d (range is 70–120).", newFov),
-                Duration = 3.5,
-                Icon = "alert-triangle",
-            })
-        end
-    end,
-}) --]]
-
-local Tab = Window:Tab({
-    Title = "Fun Scripts",
-    Icon = "joystick",
-    Locked = false,
-})
-
-local Button = Tab:Button({
-    Title = "No Fe Snake",
-    Desc = "Gives you like a snake thing",
-    Locked = false,
-    Callback = function()
-        loadstring(game:HttpGet('https://raw.githubusercontent.com/Avtor1zaTion/NO-FE-SNAKE/refs/heads/main/NO-FE-Snake.txt'))()
-    end
-})
-
-local Button = Tab:Button({
-    Title = "Fake Lag",
-    Desc = "Makes you look laggy",
-    Locked = false,
-    Callback = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/Biem6ondo/FAKELAG/refs/heads/main/Fakelag"))()
-    end
-})
-
-local Button = Tab:Button({
-    Title = "Jerk",
-    Desc = "Gives goon item (FE)",
-    Locked = false,
-    Callback = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/yeahblxr/Scripts/refs/heads/main/Edge.lua"))()
-    end
-})
-
--- Fling Player
-Tab:Divider()
-
-local Players = game:GetService("Players")
-local Player = Players.LocalPlayer
-
-getgenv().FPDH = workspace.FallenPartsDestroyHeight
-getgenv().OldPos = nil
-
-local Message = function(_Title, _Text, Time)
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = _Title,
-        Text = _Text,
-        Duration = Time
-    })
-end
-
-
-local SkidFling = function(TargetPlayer)
-    local Character = Player.Character
-    local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
-    local RootPart = Humanoid and Humanoid.RootPart
-
-    local TCharacter = TargetPlayer.Character
-    if not TCharacter then
-        return Message("Error Occurred", "Target has no character", 5)
-    end
-
-    local THumanoid = TCharacter:FindFirstChildOfClass("Humanoid")
-    local TRootPart = THumanoid and THumanoid.RootPart
-    local THead = TCharacter:FindFirstChild("Head")
-    local Accessory = TCharacter:FindFirstChildOfClass("Accessory")
-    local Handle = (Accessory and Accessory:FindFirstChild("Handle")) or nil
-
-    if Character and Humanoid and RootPart then
-        if RootPart.Velocity.Magnitude < 50 then
-            getgenv().OldPos = RootPart.CFrame
-        end
-        if THumanoid and THumanoid.Sit then
-            return Message("Error Occurred", "Target is sitting", 5)
-        end
-
-        if THead then
-            workspace.CurrentCamera.CameraSubject = THead
-        elseif not THead and Handle then
-            workspace.CurrentCamera.CameraSubject = Handle
-        elseif THumanoid and TRootPart then
-            workspace.CurrentCamera.CameraSubject = THumanoid
-        end
-
-        if not TCharacter:FindFirstChildWhichIsA("BasePart") then
-            return
-        end
-
-        local FPos = function(BasePart, Pos, Ang)
-            RootPart.CFrame = CFrame.new(BasePart.Position) * Pos * Ang
-            Character:SetPrimaryPartCFrame(CFrame.new(BasePart.Position) * Pos * Ang)
-            RootPart.Velocity = Vector3.new(9e7, 9e7 * 10, 9e7)
-            RootPart.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
-        end
-
-        local SFBasePart = function(BasePart)
-            local TimeToWait = 2
-            local Time = tick()
-            local Angle = 0
-
-            repeat
-                if RootPart and THumanoid then
-                    Angle += 100
-                    FPos(BasePart, CFrame.new(0,1.5,0), CFrame.Angles(math.rad(Angle),0,0))
-                    task.wait()
-                else
-                    break
-                end
-            until BasePart.Velocity.Magnitude > 500 or THumanoid.Sit or Humanoid.Health <= 0 or tick() > Time + TimeToWait
-        end
-
-        workspace.FallenPartsDestroyHeight = 0/0
-
-        local BV = Instance.new("BodyVelocity", RootPart)
-        BV.Name = "EpixVel"
-        BV.Velocity = Vector3.new(9e8,9e8,9e8)
-        BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-
-        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
-
-        if TRootPart then
-            SFBasePart(THead or TRootPart)
-        end
-
-        BV:Destroy()
-        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
-        workspace.CurrentCamera.CameraSubject = Humanoid
-
-        repeat
-            RootPart.CFrame = getgenv().OldPos * CFrame.new(0, .5, 0)
-            Character:SetPrimaryPartCFrame(getgenv().OldPos * CFrame.new(0, .5, 0))
-            Humanoid:ChangeState("GettingUp")
-            for _, x in pairs(Character:GetChildren()) do
-                if x:IsA("BasePart") then
-                    x.Velocity = Vector3.new()
-                    x.RotVelocity = Vector3.new()
-                end
-            end
-            task.wait()
-        until (RootPart.Position - getgenv().OldPos.p).Magnitude < 25
-
-        workspace.FallenPartsDestroyHeight = getgenv().FPDH
-    else
-        return Message("Error Occurred", "Random error", 5)
-    end
-end
-
-
-local function GetPlayerNames()
-    local names = {}
-
-    -- add all players except you
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= Player then
-            table.insert(names, plr.Name)
-        end
-    end
-
-    table.sort(names)
-
-    table.insert(names, 1, "All") 
-
-    return names
-end
-
-
-local SelectedTarget = nil
-
-local Dropdown = Tab:Dropdown({
-    Title = "Select Player to Fling",
-    Values = GetPlayerNames(),
-    Value = "All",
-Callback = function(selectedName)
-    if selectedName == "All" then
-        SelectedTarget = "All"
-    else
-        SelectedTarget = selectedName
-    end
-end
-})
-
-Players.PlayerAdded:Connect(function(plr)
-    local v = Dropdown.Values
-    table.insert(v, plr.Name)
-    table.sort(v)
-    Dropdown.Values = v
-end)
-
-Players.PlayerRemoving:Connect(function(plr)
-    local v = Dropdown.Values
-    for i,n in ipairs(v) do
-        if n == plr.Name then table.remove(v,i) break end
-    end
-    Dropdown.Values = v
-end)
-
-
-
-local Button = Tab:Button({
-    Title = "Tap To Fling",
-    Desc = "Fling the selected player",
-    Locked = false,
-    Callback = function()
-        if not SelectedTarget then
-            return Message("Error", "No player selected", 4)
-        end
-
-        if SelectedTarget == "All" then
-            for _, tp in ipairs(Players:GetPlayers()) do
-                if tp ~= Player then
-                    SkidFling(tp)
-                end
-            end
-        else
-            local tp = Players:FindFirstChild(SelectedTarget)
-            if tp then
-                SkidFling(tp)
-            else
-                Message("Error", "Player not found", 4)
-            end
-        end
-    end
-})
-
-
-local AutoFlingEnabled = false
-
-local Toggle = Tab:Toggle({
-    Title = "Auto Fling",
-    Desc = "Automatically fling the selected player repeatedly",
-    Icon = "refresh-ccw", 
-    Type = "Checkbox",
-    Value = false,
-    Callback = function(state)
-        AutoFlingEnabled = state
-
-        task.spawn(function()
-            while AutoFlingEnabled do
-                if SelectedTarget then
-                    if SelectedTarget == "All" then
-                        for _, targetPlayer in ipairs(Players:GetPlayers()) do
-                            if targetPlayer ~= Player then
-                                SkidFling(targetPlayer)
-                            end
-                        end
-                    else
-                        local tp = Players:FindFirstChild(SelectedTarget)
-                        if tp then SkidFling(tp) end
-                    end
-                end
-                task.wait(1.5)
-            end
-        end)
-    end
-})
-
-Tab:Divider()
-
-
--- Moon Gravity
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-local originalJumpPower
-local originalGravity = workspace.Gravity
-
-local function toggleMoonGravity(state)
-    local character = player.Character or player.CharacterAdded:Wait()
-    local humanoid = character:WaitForChild("Humanoid")
-
-    if state then
-        originalJumpPower = humanoid.JumpPower
-        workspace.Gravity = 50
-    else
-        workspace.Gravity = originalGravity
-        humanoid.JumpPower = originalJumpPower or 50
-    end
-end
-
-local Toggle = Tab:Toggle({
-    Title = "Moon Gravity",
-    Desc = "Lowers gravity to make it look like your on the moon",
-    Icon = "moon",
-    Type = "Checkbox",
-    Default = false,
-    Callback = function(value)
-        toggleMoonGravity(value)
-    end,
-})
-
-
-local Button = Tab:Button({
-    Title = "Wallwalk Gui",
-    Desc = "Lets you walk on walls (reset charater after pressed)",
-    Locked = false,
-    Callback = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/yeahblxr/Scripts/refs/heads/main/Wallwalk.lua"))()
-    end
-})
-
-
--- Spectate Player script start
-Tab:Divider()
-
-local function getPlayerNames()
-    local playerNames = {}
-    local localPlayer = game.Players.LocalPlayer
-    
-    for _, player in pairs(game.Players:GetPlayers()) do
-        if player ~= localPlayer then
-            table.insert(playerNames, player.Name)
-        end
-    end
-    
-    if #playerNames == 0 then
-        return {"No Players Available"}
-    end
-    
-    return playerNames
-end
-
-local isSpectating = false
-local spectateConnection = nil
-local originalCFrame = nil
-local currentSpectateTarget = nil
-
-local function spectatePlayer(playerName)
-    if playerName == "No Players Available" then
-        print("No players available to spectate")
-        return
-    end
-    
-    local targetPlayer = game.Players:FindFirstChild(playerName)
-    local localPlayer = game.Players.LocalPlayer
-    
-    if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        if isSpectating then
-            stopSpectating()
-        end
-        
-        if not originalCFrame then
-            originalCFrame = workspace.CurrentCamera.CFrame
-        end
-        
-        workspace.CurrentCamera.CameraSubject = targetPlayer.Character.Humanoid
-        workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
-        
-        currentSpectateTarget = targetPlayer
-        isSpectating = true
-        
-        print("Now spectating: " .. playerName)
-    else
-        print("Could not find player or player's character: " .. playerName)
-    end
-end
-
-local function stopSpectating()
-    local localPlayer = game.Players.LocalPlayer
-    
-    if isSpectating then
-        if localPlayer.Character and localPlayer.Character:FindFirstChild("Humanoid") then
-            workspace.CurrentCamera.CameraSubject = localPlayer.Character.Humanoid
-        end
-        
-        if originalCFrame then
-            workspace.CurrentCamera.CFrame = originalCFrame
-            originalCFrame = nil
-        end
-        
-        workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
-        
-        isSpectating = false
-        currentSpectateTarget = nil
-        
-        print("Stopped spectating")
-    end
-end
-
-local playerNames = getPlayerNames()
-local defaultValue = "Select a Player"
-
-local SpectateDropdown = Tab:Dropdown({
-    Title = "Spectate Player",
-    Values = playerNames,
-    Value = defaultValue,
-    Callback = function(option) 
-        print("Player selected: " .. option)
-        spectatePlayer(option)
-    end
-})
-
-local StopSpectateButton = Tab:Button({
-    Title = "Stop Spectating",
-    Desc = "Return camera to your character",
-    Locked = false,
-    Callback = function()
-        stopSpectating()
-    end
-})
-
-local function updatePlayerDropdown()
-    local newPlayerNames = getPlayerNames()
-    
-    SpectateDropdown:SetValues(newPlayerNames)
-    
-    if isSpectating and currentSpectateTarget then
-        local targetStillExists = false
-        for _, name in pairs(newPlayerNames) do
-            if name == currentSpectateTarget.Name then
-                targetStillExists = true
-                break
-            end
-        end
-        
-        if not targetStillExists then
-            print("Spectate target left the game, stopping spectate")
-            stopSpectating()
-        end
-    end
-    
-    print("Updated player list")
-end
-
-
-game.Players.PlayerAdded:Connect(function(player)
-    wait(1) 
-    updatePlayerDropdown()
-end)
-
-game.Players.PlayerRemoving:Connect(function(player)
-    updatePlayerDropdown()
-end)
-
-
-local RefreshButton = Tab:Button({
-    Title = "Refresh Player List",
-    Desc = "Update the spectate dropdown with current players",
-    Locked = false,
-    Callback = function()
-        updatePlayerDropdown()
-    end
-})
-
-Tab:Divider()
-
-
-local Tab = Window:Tab({
-    Title = "Advantage",
-    Icon = "swords",
-    Locked = false,
-})
-
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-
-local DEFAULT_COLOR = Color3.fromRGB(255, 255, 255)
-local FILL_TRANSPARENCY = 0.5
-local OUTLINE_TRANSPARENCY = 0
-
-local CHAMS_ENABLED = false
-local highlights = {}
-
-local function getTeamColor(player)
-	if player.Team and player.Team.TeamColor then
-		return player.Team.TeamColor.Color
-	end
-	return DEFAULT_COLOR
-end
-
-local function applyChams(player)
-	if not CHAMS_ENABLED then return end
-	if player == LocalPlayer then return end
-	if not player.Character then return end
-
-	if highlights[player] then
-		highlights[player]:Destroy()
-	end
-
-	local h = Instance.new("Highlight")
-	h.Name = "TeamChams"
-	h.FillColor = getTeamColor(player)
-	h.OutlineColor = Color3.new(1, 1, 1)
-	h.FillTransparency = FILL_TRANSPARENCY
-	h.OutlineTransparency = OUTLINE_TRANSPARENCY
-	h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-	h.Adornee = player.Character
-	h.Parent = player.Character
-
-	highlights[player] = h
-end
-
-local function removeChams(player)
-	if highlights[player] then
-		highlights[player]:Destroy()
-		highlights[player] = nil
-	end
-end
-
-local function setupPlayer(player)
-	player.CharacterAdded:Connect(function()
-		task.wait(1)
-		applyChams(player)
-	end)
-
-	player:GetPropertyChangedSignal("Team"):Connect(function()
-		if CHAMS_ENABLED then
-			applyChams(player)
-		end
-	end)
-end
-
-for _, p in ipairs(Players:GetPlayers()) do
-	setupPlayer(p)
-	if p.Character then
-		applyChams(p)
-	end
-end
-
-Players.PlayerAdded:Connect(setupPlayer)
-
-local Toggle = Tab:Toggle({
-    Title = "Team Chams",
-    Desc = "Highlights players using their team color",
-    Icon = "eye",
-    Type = "Checkbox",
-    Value = false,
-    Callback = function(state)
-        CHAMS_ENABLED = state
-
-        if state then
-            for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
-                if p.Character then
-                    applyChams(p)
-                end
-            end
-        else
-            for p in pairs(highlights) do
-                removeChams(p)
-            end
-        end
-    end
-})
-
-
-
 local Button = Tab:Button({
     Title = "Fly Gui",
     Desc = "Custom-made fly GUI to match the theme of Midnight Hub (inspired by fly GUI V3)",
@@ -999,7 +337,41 @@ local Toggle = Tab:Toggle({
     end,
 })
 
-Tab:Divider()
+-- Moon Gravity
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local originalJumpPower
+local originalGravity = workspace.Gravity
+
+local function toggleMoonGravity(state)
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoid = character:WaitForChild("Humanoid")
+
+    if state then
+        originalJumpPower = humanoid.JumpPower
+        workspace.Gravity = 50
+    else
+        workspace.Gravity = originalGravity
+        humanoid.JumpPower = originalJumpPower or 50
+    end
+end
+
+local Toggle = Tab:Toggle({
+    Title = "Moon Gravity",
+    Desc = "Lowers gravity to make it look like your on the moon",
+    Icon = "moon",
+    Type = "Checkbox",
+    Default = false,
+    Callback = function(value)
+        toggleMoonGravity(value)
+    end,
+})
+
+local Tab = Window:Tab({
+    Title = "Combat",
+    Icon = "swords",
+    Locked = false,
+})
 
 --// Services
 local Players = game:GetService("Players")
@@ -1253,14 +625,100 @@ Tab:Dropdown({
     end
 })
 
-
-
 Tab:Divider()
 
-
---// SERVICES
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+
+local DEFAULT_COLOR = Color3.fromRGB(255, 255, 255)
+local FILL_TRANSPARENCY = 0.5
+local OUTLINE_TRANSPARENCY = 0
+
+local CHAMS_ENABLED = false
+local highlights = {}
+
+local function getTeamColor(player)
+	if player.Team and player.Team.TeamColor then
+		return player.Team.TeamColor.Color
+	end
+	return DEFAULT_COLOR
+end
+
+local function applyChams(player)
+	if not CHAMS_ENABLED then return end
+	if player == LocalPlayer then return end
+	if not player.Character then return end
+
+	if highlights[player] then
+		highlights[player]:Destroy()
+	end
+
+	local h = Instance.new("Highlight")
+	h.Name = "TeamChams"
+	h.FillColor = getTeamColor(player)
+	h.OutlineColor = Color3.new(1, 1, 1)
+	h.FillTransparency = FILL_TRANSPARENCY
+	h.OutlineTransparency = OUTLINE_TRANSPARENCY
+	h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	h.Adornee = player.Character
+	h.Parent = player.Character
+
+	highlights[player] = h
+end
+
+local function removeChams(player)
+	if highlights[player] then
+		highlights[player]:Destroy()
+		highlights[player] = nil
+	end
+end
+
+local function setupPlayer(player)
+	player.CharacterAdded:Connect(function()
+		task.wait(1)
+		applyChams(player)
+	end)
+
+	player:GetPropertyChangedSignal("Team"):Connect(function()
+		if CHAMS_ENABLED then
+			applyChams(player)
+		end
+	end)
+end
+
+for _, p in ipairs(Players:GetPlayers()) do
+	setupPlayer(p)
+	if p.Character then
+		applyChams(p)
+	end
+end
+
+Players.PlayerAdded:Connect(setupPlayer)
+
+local Toggle = Tab:Toggle({
+    Title = "Team Chams",
+    Desc = "Highlights players using their team color",
+    Icon = "eye",
+    Type = "Checkbox",
+    Value = false,
+    Callback = function(state)
+        CHAMS_ENABLED = state
+
+        if state then
+            for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
+                if p.Character then
+                    applyChams(p)
+                end
+            end
+        else
+            for p in pairs(highlights) do
+                removeChams(p)
+            end
+        end
+    end
+})
+
+Tab:Divider()
 
 --// HITBOX STATE
 local HITBOX_ENABLED = false
@@ -1451,112 +909,403 @@ Tab:Input({
 
 Tab:Divider()
 
+local Tab = Window:Tab({
+    Title = "Fun",
+    Icon = "joystick",
+    Locked = false,
+})
+
 local Button = Tab:Button({
-    Title = "Invisibility",
-    Desc = "Adds a button on screen to toggle invisibility",
+    Title = "No Fe Snake",
+    Desc = "Gives you like a snake thing",
     Locked = false,
     Callback = function()
-        loadstring(game:HttpGet('https://pastebin.com/raw/3Rnd9rHf'))()
+        loadstring(game:HttpGet('https://raw.githubusercontent.com/Avtor1zaTion/NO-FE-SNAKE/refs/heads/main/NO-FE-Snake.txt'))()
     end
 })
 
---[[ -------------------------------------------------------------------------------------------------------------------------------------------------
-TP to players script
-]]----------------------------------------------------------------------------------------------------------------------------------------------------------
+local Button = Tab:Button({
+    Title = "Fake Lag",
+    Desc = "Makes you look laggy",
+    Locked = false,
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Biem6ondo/FAKELAG/refs/heads/main/Fakelag"))()
+    end
+})
+
+local Button = Tab:Button({
+    Title = "Jerk",
+    Desc = "Gives goon item (FE)",
+    Locked = false,
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/yeahblxr/Scripts/refs/heads/main/Edge.lua"))()
+    end
+})
+
+-- Fling Player
 Tab:Divider()
+
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+local Player = Players.LocalPlayer
 
-local teleporting = false
-local SelectedTPPlayer = nil
+getgenv().FPDH = workspace.FallenPartsDestroyHeight
+getgenv().OldPos = nil
 
-local function getOtherPlayerNames()
-    local names = {}
-    for _, plr in pairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer then
-            table.insert(names, plr.Name)
+local Message = function(_Title, _Text, Time)
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = _Title,
+        Text = _Text,
+        Duration = Time
+    })
+end
+
+
+local SkidFling = function(TargetPlayer)
+    local Character = Player.Character
+    local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
+    local RootPart = Humanoid and Humanoid.RootPart
+
+    local TCharacter = TargetPlayer.Character
+    if not TCharacter then
+        return Message("Error Occurred", "Target has no character", 5)
+    end
+
+    local THumanoid = TCharacter:FindFirstChildOfClass("Humanoid")
+    local TRootPart = THumanoid and THumanoid.RootPart
+    local THead = TCharacter:FindFirstChild("Head")
+    local Accessory = TCharacter:FindFirstChildOfClass("Accessory")
+    local Handle = (Accessory and Accessory:FindFirstChild("Handle")) or nil
+
+    if Character and Humanoid and RootPart then
+        if RootPart.Velocity.Magnitude < 50 then
+            getgenv().OldPos = RootPart.CFrame
         end
-    end
-    return names
-end
-
-local function teleportToPlayer(targetName)
-    if teleporting then return end
-    teleporting = true
-
-    local target = Players:FindFirstChild(targetName)
-    if not target then
-        warn("[Teleport] Target not found:", targetName)
-        teleporting = false
-        return
-    end
-
-    local targetChar = target.Character or target.CharacterAdded:Wait()
-    local targetHRP = targetChar:WaitForChild("HumanoidRootPart", 5)
-    if not targetHRP then
-        warn("[Teleport] Target HRP missing")
-        teleporting = false
-        return
-    end
-
-    local myChar = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    local myHRP = myChar:WaitForChild("HumanoidRootPart", 5)
-    if not myHRP then
-        warn("[Teleport] My HRP missing")
-        teleporting = false
-        return
-    end
-
-    myHRP.CFrame = targetHRP.CFrame + Vector3.new(0, 5, 0)
-    print("[Teleport] Teleported to:", targetName)
-
-    task.delay(0.4, function()
-        teleporting = false
-    end)
-end
-
-
-local Dropdown = Tab:Dropdown({
-    Title = "Teleport to Player",
-    Values = getOtherPlayerNames(),
-    Value = "None",
-    Callback = function(selection)
-        if selection == "None" or selection == "" then
-            SelectedTPPlayer = nil
-        else
-            SelectedTPPlayer = selection
+        if THumanoid and THumanoid.Sit then
+            return Message("Error Occurred", "Target is sitting", 5)
         end
-    end,
-})
 
-local function refreshDropdown()
-    if Dropdown.Refresh then
-        Dropdown:Refresh(getOtherPlayerNames())
-    end
-end
+        if THead then
+            workspace.CurrentCamera.CameraSubject = THead
+        elseif not THead and Handle then
+            workspace.CurrentCamera.CameraSubject = Handle
+        elseif THumanoid and TRootPart then
+            workspace.CurrentCamera.CameraSubject = THumanoid
+        end
 
-Players.PlayerAdded:Connect(refreshDropdown)
-Players.PlayerRemoving:Connect(refreshDropdown)
-
-local Button = Tab:Button({
-    Title = "Tap To Teleport",
-    Desc = "Teleport to the selected player",
-    Locked = false,
-    Callback = function()
-        if not SelectedTPPlayer then
-            warn("[Teleport] No player selected")
+        if not TCharacter:FindFirstChildWhichIsA("BasePart") then
             return
         end
 
-        teleportToPlayer(SelectedTPPlayer)
-    end,
-})
-Window:Divider()
+        local FPos = function(BasePart, Pos, Ang)
+            RootPart.CFrame = CFrame.new(BasePart.Position) * Pos * Ang
+            Character:SetPrimaryPartCFrame(CFrame.new(BasePart.Position) * Pos * Ang)
+            RootPart.Velocity = Vector3.new(9e7, 9e7 * 10, 9e7)
+            RootPart.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
+        end
 
+        local SFBasePart = function(BasePart)
+            local TimeToWait = 2
+            local Time = tick()
+            local Angle = 0
+
+            repeat
+                if RootPart and THumanoid then
+                    Angle += 100
+                    FPos(BasePart, CFrame.new(0,1.5,0), CFrame.Angles(math.rad(Angle),0,0))
+                    task.wait()
+                else
+                    break
+                end
+            until BasePart.Velocity.Magnitude > 500 or THumanoid.Sit or Humanoid.Health <= 0 or tick() > Time + TimeToWait
+        end
+
+        workspace.FallenPartsDestroyHeight = 0/0
+
+        local BV = Instance.new("BodyVelocity", RootPart)
+        BV.Name = "EpixVel"
+        BV.Velocity = Vector3.new(9e8,9e8,9e8)
+        BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+
+        if TRootPart then
+            SFBasePart(THead or TRootPart)
+        end
+
+        BV:Destroy()
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+        workspace.CurrentCamera.CameraSubject = Humanoid
+
+        repeat
+            RootPart.CFrame = getgenv().OldPos * CFrame.new(0, .5, 0)
+            Character:SetPrimaryPartCFrame(getgenv().OldPos * CFrame.new(0, .5, 0))
+            Humanoid:ChangeState("GettingUp")
+            for _, x in pairs(Character:GetChildren()) do
+                if x:IsA("BasePart") then
+                    x.Velocity = Vector3.new()
+                    x.RotVelocity = Vector3.new()
+                end
+            end
+            task.wait()
+        until (RootPart.Position - getgenv().OldPos.p).Magnitude < 25
+
+        workspace.FallenPartsDestroyHeight = getgenv().FPDH
+    else
+        return Message("Error Occurred", "Random error", 5)
+    end
+end
+
+
+local function GetPlayerNames()
+    local names = {}
+
+    -- add all players except you
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= Player then
+            table.insert(names, plr.Name)
+        end
+    end
+
+    table.sort(names)
+
+    table.insert(names, 1, "All") 
+
+    return names
+end
+
+
+local SelectedTarget = nil
+
+local Dropdown = Tab:Dropdown({
+    Title = "Select Player to Fling",
+    Values = GetPlayerNames(),
+    Value = "All",
+Callback = function(selectedName)
+    if selectedName == "All" then
+        SelectedTarget = "All"
+    else
+        SelectedTarget = selectedName
+    end
+end
+})
+
+Players.PlayerAdded:Connect(function(plr)
+    local v = Dropdown.Values
+    table.insert(v, plr.Name)
+    table.sort(v)
+    Dropdown.Values = v
+end)
+
+Players.PlayerRemoving:Connect(function(plr)
+    local v = Dropdown.Values
+    for i,n in ipairs(v) do
+        if n == plr.Name then table.remove(v,i) break end
+    end
+    Dropdown.Values = v
+end)
+
+local Button = Tab:Button({
+    Title = "Tap To Fling",
+    Desc = "Fling the selected player",
+    Locked = false,
+    Callback = function()
+        if not SelectedTarget then
+            return Message("Error", "No player selected", 4)
+        end
+
+        if SelectedTarget == "All" then
+            for _, tp in ipairs(Players:GetPlayers()) do
+                if tp ~= Player then
+                    SkidFling(tp)
+                end
+            end
+        else
+            local tp = Players:FindFirstChild(SelectedTarget)
+            if tp then
+                SkidFling(tp)
+            else
+                Message("Error", "Player not found", 4)
+            end
+        end
+    end
+})
+
+local AutoFlingEnabled = false
+
+local Toggle = Tab:Toggle({
+    Title = "Auto Fling",
+    Desc = "Automatically fling the selected player repeatedly",
+    Icon = "refresh-ccw", 
+    Type = "Checkbox",
+    Value = false,
+    Callback = function(state)
+        AutoFlingEnabled = state
+
+        task.spawn(function()
+            while AutoFlingEnabled do
+                if SelectedTarget then
+                    if SelectedTarget == "All" then
+                        for _, targetPlayer in ipairs(Players:GetPlayers()) do
+                            if targetPlayer ~= Player then
+                                SkidFling(targetPlayer)
+                            end
+                        end
+                    else
+                        local tp = Players:FindFirstChild(SelectedTarget)
+                        if tp then SkidFling(tp) end
+                    end
+                end
+                task.wait(1.5)
+            end
+        end)
+    end
+})
+
+-- Spectate Player script start
+Tab:Divider()
+
+local function getPlayerNames()
+    local playerNames = {}
+    local localPlayer = game.Players.LocalPlayer
+    
+    for _, player in pairs(game.Players:GetPlayers()) do
+        if player ~= localPlayer then
+            table.insert(playerNames, player.Name)
+        end
+    end
+    
+    if #playerNames == 0 then
+        return {"No Players Available"}
+    end
+    
+    return playerNames
+end
+
+local isSpectating = false
+local spectateConnection = nil
+local originalCFrame = nil
+local currentSpectateTarget = nil
+
+local function spectatePlayer(playerName)
+    if playerName == "No Players Available" then
+        print("No players available to spectate")
+        return
+    end
+    
+    local targetPlayer = game.Players:FindFirstChild(playerName)
+    local localPlayer = game.Players.LocalPlayer
+    
+    if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        if isSpectating then
+            stopSpectating()
+        end
+        
+        if not originalCFrame then
+            originalCFrame = workspace.CurrentCamera.CFrame
+        end
+        
+        workspace.CurrentCamera.CameraSubject = targetPlayer.Character.Humanoid
+        workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+        
+        currentSpectateTarget = targetPlayer
+        isSpectating = true
+        
+        print("Now spectating: " .. playerName)
+    else
+        print("Could not find player or player's character: " .. playerName)
+    end
+end
+
+local function stopSpectating()
+    local localPlayer = game.Players.LocalPlayer
+    
+    if isSpectating then
+        if localPlayer.Character and localPlayer.Character:FindFirstChild("Humanoid") then
+            workspace.CurrentCamera.CameraSubject = localPlayer.Character.Humanoid
+        end
+        
+        if originalCFrame then
+            workspace.CurrentCamera.CFrame = originalCFrame
+            originalCFrame = nil
+        end
+        
+        workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+        
+        isSpectating = false
+        currentSpectateTarget = nil
+        
+        print("Stopped spectating")
+    end
+end
+
+local playerNames = getPlayerNames()
+local defaultValue = "Select a Player"
+
+local SpectateDropdown = Tab:Dropdown({
+    Title = "Spectate Player",
+    Values = playerNames,
+    Value = defaultValue,
+    Callback = function(option) 
+        print("Player selected: " .. option)
+        spectatePlayer(option)
+    end
+})
+
+local StopSpectateButton = Tab:Button({
+    Title = "Stop Spectating",
+    Desc = "Return camera to your character",
+    Locked = false,
+    Callback = function()
+        stopSpectating()
+    end
+})
+
+local function updatePlayerDropdown()
+    local newPlayerNames = getPlayerNames()
+    
+    SpectateDropdown:SetValues(newPlayerNames)
+    
+    if isSpectating and currentSpectateTarget then
+        local targetStillExists = false
+        for _, name in pairs(newPlayerNames) do
+            if name == currentSpectateTarget.Name then
+                targetStillExists = true
+                break
+            end
+        end
+        
+        if not targetStillExists then
+            print("Spectate target left the game, stopping spectate")
+            stopSpectating()
+        end
+    end
+    
+    print("Updated player list")
+end
+
+
+game.Players.PlayerAdded:Connect(function(player)
+    wait(1) 
+    updatePlayerDropdown()
+end)
+
+game.Players.PlayerRemoving:Connect(function(player)
+    updatePlayerDropdown()
+end)
+
+
+local RefreshButton = Tab:Button({
+    Title = "Refresh Player List",
+    Desc = "Update the spectate dropdown with current players",
+    Locked = false,
+    Callback = function()
+        updatePlayerDropdown()
+    end
+})
 
 local Tab = Window:Tab({
-    Title = "Client",
-    Icon = "usb",
+    Title = "Visuals",
+    Icon = "eye",
     Locked = false,
 })
 
@@ -1593,26 +1342,42 @@ game:GetService("Lighting").Changed:Connect(removeFog)
     end
 })
 
-local Input = Tab:Input({
-    Title = "Set FPS Cap",
-    Desc = "Lets you change the FPS cap of Roblox.",
-    Value = "60",
-    InputIcon = "square-pen",
-    Type = "Input",
-    Placeholder = "Enter FPS cap",
-    Callback = function(text) 
-        local num = tonumber(text)
-        if num then
-            setfpscap(num)
-        else
-            WindUI:Notify({
-                Title = "Invalid Value",
-                Content = "Please enter a valid number for the FPS cap.",
-                Duration = 2,
-                Icon = "ban"
-            })
-        end
+local Button = Tab:Button({
+    Title = "Shiftlock",
+    Desc = "Gives a shiftlock button",
+    Locked = false,
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/MiniNoobie/ShiftLockx/main/Shiftlock-MiniNoobie",true))()
     end
+})
+
+local Button = Tab:Button({
+    Title = "Short proximity prompt",
+    Desc = "removes the hold duration for proximity prompts so you can spam it",
+    Locked = false,
+    Callback = function()
+        local function SetupProximityPrompt(prompt)
+    prompt.HoldDuration = 0
+end
+
+workspace.DescendantAdded:Connect(function(descendant)
+    if descendant:IsA("ProximityPrompt") then
+        SetupProximityPrompt(descendant)
+    end
+end)
+
+for _, prompt in ipairs(workspace:GetDescendants()) do
+    if prompt:IsA("ProximityPrompt") then
+        SetupProximityPrompt(prompt)
+    end
+end
+    end
+})
+
+local Tab = Window:Tab({
+    Title = "Performance",
+    Icon = "zap",
+    Locked = false,
 })
 
 local Button = Tab:Button({
@@ -1647,6 +1412,37 @@ local Button = Tab:Button({
 }
 loadstring(game:HttpGet("https://raw.githubusercontent.com/CasperFlyModz/discord.gg-rips/main/FPSBooster.lua"))()
    end,
+})
+
+local Input = Tab:Input({
+    Title = "Set FPS Cap",
+    Desc = "Lets you change the FPS cap of Roblox.",
+    Value = "60",
+    InputIcon = "square-pen",
+    Type = "Input",
+    Placeholder = "Enter FPS cap",
+    Callback = function(text) 
+        local num = tonumber(text)
+        if num then
+            setfpscap(num)
+        else
+            WindUI:Notify({
+                Title = "Invalid Value",
+                Content = "Please enter a valid number for the FPS cap.",
+                Duration = 2,
+                Icon = "ban"
+            })
+        end
+    end
+})
+
+local Button = Tab:Button({
+    Title = "Performance Stats",
+    Desc = "Displays ping and fps in top left corner",
+    Locked = false,
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/yeahblxr/Scripts/refs/heads/main/Fps_stats.lua"))()
+    end
 })
 
 local Tab = Window:Tab({
@@ -1755,10 +1551,9 @@ end
     end
 })
 
-
 local Tab = Window:Tab({
-    Title = "Misc",
-    Icon = "dices",
+    Title = "Tools",
+    Icon = "wrench",
     Locked = false,
 })
 
@@ -1768,47 +1563,6 @@ local Button = Tab:Button({
     Locked = false,
     Callback = function()
         loadstring(game:HttpGet("https://raw.githubusercontent.com/Xxtan31/Ata/main/deltakeyboardcrack.txt", true))()
-    end
-})
-
-local Button = Tab:Button({
-    Title = "Short proximity prompt",
-    Desc = "removes the hold duration for proximity prompts so you can spam it",
-    Locked = false,
-    Callback = function()
-        local function SetupProximityPrompt(prompt)
-    prompt.HoldDuration = 0
-end
-
-workspace.DescendantAdded:Connect(function(descendant)
-    if descendant:IsA("ProximityPrompt") then
-        SetupProximityPrompt(descendant)
-    end
-end)
-
-for _, prompt in ipairs(workspace:GetDescendants()) do
-    if prompt:IsA("ProximityPrompt") then
-        SetupProximityPrompt(prompt)
-    end
-end
-    end
-})
-
-local Button = Tab:Button({
-    Title = "Shiftlock",
-    Desc = "Gives a shiftlock button",
-    Locked = false,
-    Callback = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/MiniNoobie/ShiftLockx/main/Shiftlock-MiniNoobie",true))()
-    end
-})
-
-local Button = Tab:Button({
-    Title = "Performance Stats",
-    Desc = "Displays ping and fps in top left corner",
-    Locked = false,
-    Callback = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/yeahblxr/Scripts/refs/heads/main/Fps_stats.lua"))()
     end
 })
 
