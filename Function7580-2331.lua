@@ -142,7 +142,7 @@ Window:OnDestroy(function()
 end)
 
 Window:Tag({
-    Title = "V1.6.0",
+    Title = "V1.7.0",
     Color = Color3.fromHex("#663399")
 })
 
