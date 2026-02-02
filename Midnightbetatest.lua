@@ -1,8 +1,7 @@
--- hahahv69
 loadstring(game:HttpGet("https://raw.githubusercontent.com/yeahblxr/Scripts/refs/heads/main/Midnight-intro.lua"))()
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
--- Global Services Declaration
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -10,10 +9,12 @@ local StarterGui = game:GetService("StarterGui")
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
 local Lighting = game:GetService("Lighting")
-
-local Camera = workspace.CurrentCamera
 local Workspace = game:GetService("Workspace")
+local CoreGui = game:GetService("CoreGui")
+
+local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
+
 
 WindUI:SetNotificationLower(true)
 
@@ -77,7 +78,7 @@ local gui = Instance.new("ScreenGui")
 gui.Name = "StrikeXMenuGUI"
 gui.IgnoreGuiInset = true
 gui.ResetOnSpawn = false
-gui.Parent = game.CoreGui
+gui.Parent = CoreGui
 
 local button = Instance.new("ImageButton")
 button.Size = UDim2.new(0, 60, 0, 60)
@@ -126,7 +127,7 @@ button.InputChanged:Connect(function(input)
     end
 end)
 
-game:GetService("UserInputService").InputChanged:Connect(function(input)
+UserInputService.InputChanged:Connect(function(input)
     if input == dragInput and dragging then
         local delta = input.Position - dragStart
         button.Position = UDim2.new(
@@ -154,13 +155,10 @@ Window:OnDestroy(function()
     gui:Destroy()
 end)
 
-
-
 Window:Tag({
     Title = "Premium",
     Color = Color3.fromHex("#daa520")
 })
-
 
 Window:Tag({
     Title = "V1.6.1",
@@ -169,12 +167,15 @@ Window:Tag({
 
 
 
--- Reorganized tabs start here
+
 local Tab = Window:Tab({
     Title = "Home",
     Icon = "house",
     Locked = false,
 })
+
+
+
 
 local function getExecutor()
     if identifyexecutor then
@@ -189,12 +190,22 @@ end
 local Paragraph = Tab:Paragraph({
     Title = "Executor Information",
     Desc = "Executor: " .. getExecutor(),
-    Color = "#9333ea",
+    Color = Color3.fromRGB(147, 51, 234),
+    Transparency = 0.42, 
     Image = "",
     ImageSize = 30,
     Thumbnail = "",
     ThumbnailSize = 80,
     Locked = false
+})
+
+local Keybind = Tab:Keybind({
+    Title = "Keybind",
+    Desc = "Keybind to open ui",
+    Value = "G",
+    Callback = function(v)
+        Window:SetToggleKey(Enum.KeyCode[v])
+    end
 })
 
 local Button = Tab:Button({
@@ -301,7 +312,7 @@ local Slider = Tab:Slider({
         game.Players.LocalPlayer.Character.Humanoid.JumpPower = value
     end
 })
--- Inf Jump start
+
 local infiniteJumpConnection
 
 local Toggle = Tab:Toggle({
@@ -388,9 +399,9 @@ local Toggle = Tab:Toggle({
     end,
 })
 
--- Moon Gravity
+
 local originalJumpPower
-local originalGravity = workspace.Gravity
+local originalGravity = Workspace.Gravity
 
 local function toggleMoonGravity(state)
     local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
@@ -398,9 +409,9 @@ local function toggleMoonGravity(state)
 
     if state then
         originalJumpPower = humanoid.JumpPower
-        workspace.Gravity = 50
+        Workspace.Gravity = 50
     else
-        workspace.Gravity = originalGravity
+        Workspace.Gravity = originalGravity
         humanoid.JumpPower = originalJumpPower or 50
     end
 end
@@ -422,7 +433,7 @@ local Tab = Window:Tab({
     Locked = false,
 })
 
---// State
+
 local AimbotEnabled = false
 local ShowFOV = false
 local UnlockFOV = false
@@ -432,13 +443,13 @@ local WallCheckEnabled = false
 local FOVRadius = 150
 local AimPart = "Head"
 
---// FOV Position
+
 local FOVPosition = Vector2.new(
     Camera.ViewportSize.X / 2,
     Camera.ViewportSize.Y / 2
 )
 
---// FOV Circle
+
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Visible = false
 FOVCircle.Filled = false
@@ -446,7 +457,7 @@ FOVCircle.Thickness = 2
 FOVCircle.Radius = FOVRadius
 FOVCircle.Color = Color3.fromRGB(255, 255, 0)
 
---// Aim Part Mapping (R6 + R15 SAFE)
+
 local AimPartMap = {
     Head = { "Head" },
 
@@ -485,7 +496,7 @@ local function GetAimPartFromCharacter(character)
     return nil
 end
 
---// Wall Check
+
 local function IsVisible(targetPart, character)
     if not WallCheckEnabled then
         return true
@@ -506,7 +517,7 @@ local function IsVisible(targetPart, character)
     return result == nil
 end
 
---// Target Finder
+
 local function GetClosestTarget()
     local closestPart = nil
     local shortestDistance = math.huge
@@ -540,7 +551,7 @@ local function GetClosestTarget()
     return closestPart
 end
 
---// Main Loop
+
 RunService.RenderStepped:Connect(function()
     local viewport = Camera.ViewportSize
     local mousePos = UserInputService:GetMouseLocation()
@@ -563,7 +574,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
---// UI
+
 
 Tab:Toggle({
     Title = "Enable Aimbot",
@@ -667,160 +678,183 @@ Tab:Dropdown({
 
 Tab:Divider()
 
--- Services
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
 
--- Tables to store objects
+-- ===== UNIFIED CHAMS + ESP =====
+
 local ESP_Objects = {}
-local Chams_Objects = {}
-
--- Toggleable flags
-local ESP_Enabled = false
 local Chams_Enabled = false
+local ESP_Enabled = false
 
--- Function to create chams highlight
-local function createChams(player)
+local function getPlayerColor(player)
+    if player.Team and player.Team.TeamColor then
+        return player.Team.TeamColor.Color
+    end
+    return Color3.fromRGB(255, 255, 255) -- default white
+end
+
+local function createHighlight(player)
     if player == LocalPlayer then return end
     local character = player.Character
-    if character and character:FindFirstChild("HumanoidRootPart") then
-        local root = character.HumanoidRootPart
+    if not character then return end
 
-        local highlight = Instance.new("BoxHandleAdornment")
-        highlight.Name = "ChamsHighlight"
-        highlight.Adornee = root
-        highlight.Size = Vector3.new(2,2,1)
-        highlight.Color3 = Color3.fromRGB(255,0,0)
-        highlight.Transparency = 0.5
-        highlight.AlwaysOnTop = true
-        highlight.ZIndex = 10
-        highlight.Visible = Chams_Enabled
-        highlight.Parent = root
-
-        Chams_Objects[player] = highlight
+    -- destroy old highlight if exists
+    if ESP_Objects[player] then
+        if ESP_Objects[player].highlight and ESP_Objects[player].highlight.Parent then
+            ESP_Objects[player].highlight:Destroy()
+        end
+        if ESP_Objects[player].textBillboard and ESP_Objects[player].textBillboard.Parent then
+            ESP_Objects[player].textBillboard:Destroy()
+        end
     end
+
+    -- Create Highlight
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "PlayerHighlight"
+    highlight.Adornee = character
+    highlight.FillColor = getPlayerColor(player)
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0
+    highlight.OutlineColor = Color3.fromRGB(0, 0, 0)
+    highlight.Enabled = Chams_Enabled or ESP_Enabled
+    highlight.Parent = character
+
+    -- Create Text Billboard (only shown when ESP enabled)
+    local textBillboard = Instance.new("BillboardGui")
+    textBillboard.Name = "ESP_Text"
+    textBillboard.Adornee = character:FindFirstChild("HumanoidRootPart")
+    textBillboard.Size = UDim2.new(0, 250, 0, 20)
+    textBillboard.StudsOffset = Vector3.new(0, 3, 0)
+    textBillboard.AlwaysOnTop = true
+    textBillboard.Enabled = ESP_Enabled
+
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Font = Enum.Font.SourceSansBold
+    textLabel.TextColor3 = getPlayerColor(player)
+    textLabel.TextSize = 14
+    textLabel.Parent = textBillboard
+
+    textBillboard.Parent = CoreGui
+
+    ESP_Objects[player] = {
+        highlight = highlight,
+        textBillboard = textBillboard,
+        textLabel = textLabel,
+        character = character
+    }
 end
 
--- Apply chams to all existing players
+-- Apply highlights to existing players
 for _, p in pairs(Players:GetPlayers()) do
-    createChams(p)
+    createHighlight(p)
+    p.CharacterAdded:Connect(function()
+        task.wait(0.5)
+        createHighlight(p)
+    end)
 end
 
--- Apply chams to new players
+-- Apply highlights to new players joining
 Players.PlayerAdded:Connect(function(player)
     player.CharacterAdded:Connect(function()
-        createChams(player)
+        task.wait(0.5)
+        createHighlight(player)
     end)
 end)
 
--- Function to toggle chams
-local function toggleChams()
-    -- If ESP is on, turn it off first
-    if ESP_Enabled then
-        ESP_Enabled = false
-        for _, gui in pairs(ESP_Objects) do
-            gui:Destroy()
+-- Update text display every frame
+RunService.RenderStepped:Connect(function()
+    for player, obj in pairs(ESP_Objects) do
+        if obj.highlight and obj.highlight.Parent then
+            -- Update highlight color in case team changed
+            obj.highlight.FillColor = getPlayerColor(player)
+            obj.textLabel.TextColor3 = getPlayerColor(player)
         end
-        ESP_Objects = {}
-    end
 
-    Chams_Enabled = not Chams_Enabled
-    for player, highlight in pairs(Chams_Objects) do
-        if highlight and highlight.Parent then
-            highlight.Visible = Chams_Enabled
-        end
-    end
-end
-
--- Function to toggle ESP
-local function toggleESP()
-    -- If Chams is on, turn it off first
-    if Chams_Enabled then
-        Chams_Enabled = false
-        for player, highlight in pairs(Chams_Objects) do
-            if highlight and highlight.Parent then
-                highlight.Visible = false
-            end
-        end
-    end
-
-    ESP_Enabled = not ESP_Enabled
-
-    -- Clear existing ESP
-    for _, gui in pairs(ESP_Objects) do
-        gui:Destroy()
-    end
-    ESP_Objects = {}
-
-    if ESP_Enabled then
-        RunService.RenderStepped:Connect(function()
-            for _, player in pairs(Players:GetPlayers()) do
-                if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                    local root = player.Character.HumanoidRootPart
-                    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-                    local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
-                    if onScreen then
-                        local gui = ESP_Objects[player] or Instance.new("BillboardGui")
-                        gui.Name = "ESP_"..player.Name
-                        gui.Adornee = root
-                        gui.Size = UDim2.new(0, 100, 0, 50)
-                        gui.StudsOffset = Vector3.new(0, 3, 0)
-                        gui.AlwaysOnTop = true
-
-                        local textLabel = gui:FindFirstChild("Label") or Instance.new("TextLabel")
-                        textLabel.Name = "Label"
-                        textLabel.BackgroundTransparency = 1
-                        textLabel.Size = UDim2.new(1,0,1,0)
-                        textLabel.TextColor3 = Color3.fromRGB(255,255,255)
-                        textLabel.TextStrokeTransparency = 0
-                        textLabel.Font = Enum.Font.SourceSansBold
-                        textLabel.TextSize = 14
-                        textLabel.Text = string.format("%s\nHP: %d\nDist: %.1f", player.Name, humanoid.Health, (root.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude)
-                        textLabel.Parent = gui
-
-                        gui.Parent = game:GetService("CoreGui")
-                        ESP_Objects[player] = gui
-                    end
+        if ESP_Enabled and obj.textBillboard and obj.textBillboard.Parent then
+            local character = player.Character
+            if character then
+                local root = character:FindFirstChild("HumanoidRootPart")
+                local humanoid = character:FindFirstChildOfClass("Humanoid")
+                if root then
+                    local distance = (root.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+                    obj.textBillboard.Adornee = root
+                    obj.textLabel.Text = string.format("%s | HP: %.0f | Dist: %.1f",
+                        player.Name,
+                        humanoid and humanoid.Health or 0,
+                        distance
+                    )
                 end
             end
-        end)
+        end
     end
-end
+end)
 
--- Wind UI buttons
-local Chams_Button = Tab:Button({
-    Title = "Toggle Chams",
-    Desc = "Highlights players",
-    Locked = false,
-    Callback = function()
-        toggleChams()
+-- Chams Toggle
+local Chams_Toggle = Tab:Toggle({
+    Title = "Chams",
+    Desc = "Highlight players with team color",
+    Icon = "eye",
+    Type = "Checkbox",
+    Value = false,
+    Callback = function(state)
+        Chams_Enabled = state
+        if state and ESP_Enabled then
+            ESP_Enabled = false
+            for _, obj in pairs(ESP_Objects) do
+                if obj.textBillboard then
+                    obj.textBillboard.Enabled = false
+                end
+            end
+        end
+        for _, obj in pairs(ESP_Objects) do
+            if obj.highlight then
+                obj.highlight.Enabled = Chams_Enabled or ESP_Enabled
+            end
+        end
     end
 })
 
-local ESP_Button = Tab:Button({
-    Title = "Toggle ESP",
-    Desc = "Highlight player, shows name, HP, and distance",
-    Locked = false,
-    Callback = function()
-        toggleESP()
+-- ESP Toggle
+local ESP_Toggle = Tab:Toggle({
+    Title = "ESP",
+    Desc = "Highlight players + show name, HP, distance",
+    Icon = "eye",
+    Type = "Checkbox",
+    Value = false,
+    Callback = function(state)
+        ESP_Enabled = state
+        if state and Chams_Enabled then
+            Chams_Enabled = false
+            for _, obj in pairs(ESP_Objects) do
+                if obj.highlight then
+                    obj.highlight.Enabled = false
+                end
+            end
+        end
+        for _, obj in pairs(ESP_Objects) do
+            if obj.highlight then
+                obj.highlight.Enabled = Chams_Enabled or ESP_Enabled
+            end
+            if obj.textBillboard then
+                obj.textBillboard.Enabled = ESP_Enabled
+            end
+        end
     end
 })
-
 
 Tab:Divider()
 
---// HITBOX STATE
+
 local HITBOX_ENABLED = false
 local HITBOX_SIZE = 10
 local HITBOX_TRANSPARENCY = 0.5
 local HITBOX_COLOR = Color3.fromRGB(255, 0, 0)
-local HITBOX_PART = "Body" -- "Body" or "Head"
+local HITBOX_PART = "Body" 
 
 local modified = {}
 
---// GET TARGET PART
+
 local function getTargetPart(character)
 	if HITBOX_PART == "Head" then
 		return character:FindFirstChild("Head")
@@ -829,7 +863,7 @@ local function getTargetPart(character)
 	end
 end
 
---// APPLY HITBOX
+
 local function applyHitbox(player)
 	if player == LocalPlayer then return end
 	if not player.Character then return end
@@ -858,7 +892,7 @@ local function applyHitbox(player)
 	part.CanCollide = false
 end
 
---// REMOVE HITBOX
+
 local function removeHitbox(player)
 	if not modified[player] then return end
 	if not player.Character then return end
@@ -876,7 +910,7 @@ local function removeHitbox(player)
 	modified[player] = nil
 end
 
---// UPDATE ALL
+
 local function updateAll()
 	for _, player in ipairs(Players:GetPlayers()) do
 		if HITBOX_ENABLED then
@@ -888,7 +922,7 @@ local function updateAll()
 	end
 end
 
---// PLAYER HANDLING
+
 Players.PlayerAdded:Connect(function(player)
 	player.CharacterAdded:Connect(function()
 		task.wait(1)
@@ -907,11 +941,7 @@ for _, player in ipairs(Players:GetPlayers()) do
 	end)
 end
 
---// ======================
---// UI CONTROLS
---// ======================
 
--- ENABLE HITBOX
 Tab:Toggle({
 	Title = "Hitbox Expander",
 	Desc = "Enable expanded hitboxes",
@@ -924,7 +954,7 @@ Tab:Toggle({
 	end
 })
 
--- HITBOX SIZE
+
 Tab:Input({
 	Title = "Hitbox Size",
 	Desc = "Recommended: 8 - 20",
@@ -943,7 +973,7 @@ Tab:Input({
 	end
 })
 
--- HITBOX PART DROPDOWN (BODY / HEAD)
+
 Tab:Dropdown({
 	Title = "Hitbox Target",
 	Desc = "Choose which part to expand",
@@ -957,7 +987,7 @@ Tab:Dropdown({
 	end
 })
 
--- HITBOX TRANSPARENCY
+
 Tab:Slider({
 	Title = "Hitbox Transparency",
 	Desc = "0 = visible | 1 = invisible",
@@ -975,7 +1005,7 @@ Tab:Slider({
 	end
 })
 
--- HITBOX COLOR (RGB)
+
 Tab:Input({
 	Title = "Hitbox Color (RGB)",
 	Desc = "Format: R,G,B  (example: 255,0,0)",
@@ -1033,7 +1063,7 @@ local Button = Tab:Button({
     end
 })
 
--- Fling Player
+
 Tab:Divider()
 
 getgenv().FPDH = Workspace.FallenPartsDestroyHeight
@@ -1147,7 +1177,7 @@ end
 local function GetPlayerNames()
     local names = {}
 
-    -- add all players except you
+    
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer then
             table.insert(names, plr.Name)
@@ -1249,7 +1279,7 @@ local Toggle = Tab:Toggle({
     end
 })
 
--- Spectate Player script start
+
 Tab:Divider()
 
 local function getPlayerNames()
@@ -1280,8 +1310,7 @@ local function spectatePlayer(playerName)
         return
     end
     
-    local targetPlayer = game.Players:FindFirstChild(playerName)
-    local localPlayer = game.Players.LocalPlayer
+    local targetPlayer = Players:FindFirstChild(playerName)
     
     if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
         if isSpectating then
@@ -1289,11 +1318,11 @@ local function spectatePlayer(playerName)
         end
         
         if not originalCFrame then
-            originalCFrame = workspace.CurrentCamera.CFrame
+            originalCFrame = Camera.CFrame
         end
         
-        workspace.CurrentCamera.CameraSubject = targetPlayer.Character.Humanoid
-        workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+        Camera.CameraSubject = targetPlayer.Character.Humanoid
+        Camera.CameraType = Enum.CameraType.Custom
         
         currentSpectateTarget = targetPlayer
         isSpectating = true
@@ -1305,19 +1334,17 @@ local function spectatePlayer(playerName)
 end
 
 local function stopSpectating()
-    local localPlayer = game.Players.LocalPlayer
-    
     if isSpectating then
-        if localPlayer.Character and localPlayer.Character:FindFirstChild("Humanoid") then
-            workspace.CurrentCamera.CameraSubject = localPlayer.Character.Humanoid
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            Camera.CameraSubject = LocalPlayer.Character.Humanoid
         end
         
         if originalCFrame then
-            workspace.CurrentCamera.CFrame = originalCFrame
+            Camera.CFrame = originalCFrame
             originalCFrame = nil
         end
         
-        workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+        Camera.CameraType = Enum.CameraType.Custom
         
         isSpectating = false
         currentSpectateTarget = nil
@@ -1371,13 +1398,12 @@ local function updatePlayerDropdown()
     print("Updated player list")
 end
 
-
-game.Players.PlayerAdded:Connect(function(player)
-    wait(1) 
+Players.PlayerAdded:Connect(function(player)
+    task.wait(1) 
     updatePlayerDropdown()
 end)
 
-game.Players.PlayerRemoving:Connect(function(player)
+Players.PlayerRemoving:Connect(function(player)
     updatePlayerDropdown()
 end)
 
@@ -1471,27 +1497,27 @@ local Button = Tab:Button({
     Callback = function()
   _G.Settings = {
     Players = {
-        ["Ignore Me"] = true, -- Ignore your Character
-        ["Ignore Others"] = true -- Ignore other Characters
+        ["Ignore Me"] = true, 
+        ["Ignore Others"] = true 
     },
     Meshes = {
-        Destroy = false, -- Destroy Meshes
-        LowDetail = true -- Low detail meshes (NOT SURE IT DOES ANYTHING)
+        Destroy = false, 
+        LowDetail = true 
     },
     Images = {
-        Invisible = true, -- Invisible Images
-        LowDetail = false, -- Low detail images (NOT SURE IT DOES ANYTHING)
-        Destroy = false, -- Destroy Images
+        Invisible = true, 
+        LowDetail = false, 
+        Destroy = false, 
     },
     Other = {
-        ["No Particles"] = true, -- Disables all ParticleEmitter, Trail, Smoke, Fire and Sparkles
-        ["No Camera Effects"] = true, -- Disables all PostEffect's (Camera/Lighting Effects)
-        ["No Explosions"] = true, -- Makes Explosion's invisible
-        ["No Clothes"] = true, -- Removes Clothing from the game
-        ["Low Water Graphics"] = true, -- Removes Water Quality
-        ["No Shadows"] = true, -- Remove Shadows
-        ["Low Rendering"] = true, -- Lower Rendering
-        ["Low Quality Parts"] = true -- Lower quality parts
+        ["No Particles"] = true, 
+        ["No Camera Effects"] = true,
+        ["No Explosions"] = true, 
+        ["No Clothes"] = true, 
+        ["Low Water Graphics"] = true, 
+        ["No Shadows"] = true, 
+        ["Low Rendering"] = true, 
+        ["Low Quality Parts"] = true 
     }
 }
 loadstring(game:HttpGet("https://raw.githubusercontent.com/CasperFlyModz/discord.gg-rips/main/FPSBooster.lua"))()
@@ -1547,14 +1573,14 @@ local Button = Tab:Button({
             WindUI:Notify({
     Title = "Copied",
     Content = "Jobid Copied to Clipboard",
-    Duration = 3, -- 3 seconds
+    Duration = 3, 
     Icon = "clipboard-check",
 })
         else
                         WindUI:Notify({
     Title = "Failed",
     Content = "Copy Failed",
-    Duration = 3, -- 3 seconds
+    Duration = 3, 
     Icon = "clipboard-x",
 })
         end
@@ -1564,16 +1590,16 @@ local Button = Tab:Button({
 local Input = Tab:Input({
     Title = "Join Server",
     Desc = "Join a server with a jobID",
-    Value = "",                      -- start empty so it doesn't try to teleport automatically
+    Value = "",     
     InputIcon = "id-card",
-    Type = "Input", -- or "Textarea"
+    Type = "Input", 
     Placeholder = "JobId",
     Callback = function(Text) 
-        local JobIdTextBoxValue = Text  -- Use actual user input
+        local JobIdTextBoxValue = Text  
         
         local placeId = game.PlaceId
         
-        -- Only teleport if input is not empty and not default placeholder text
+       
         if JobIdTextBoxValue ~= "" and JobIdTextBoxValue:lower() ~= "jobid" then
             local success, errorMessage = pcall(function()
                 TeleportService:TeleportToPlaceInstance(placeId, JobIdTextBoxValue, LocalPlayer)
@@ -1648,13 +1674,13 @@ Window:Divider()
 
 local Tab = Window:Tab({
     Title = "Settings",
-    Icon = "cog", -- optional
+    Icon = "cog", 
     Locked = false,
 })
 
 local Section = Tab:Section({ 
-    Title = "Nothing here yet", -- optional
-    Desc = "More features coming soon!", -- optional
+    Title = "Nothing here yet",
+    Desc = "More features coming soon!", 
 })
 
 loadstring(game:HttpGet("https://raw.githubusercontent.com/yeahblxr/Scripts/refs/heads/main/Notifications.lua"))()
