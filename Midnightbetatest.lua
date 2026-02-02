@@ -189,7 +189,7 @@ end
 local Paragraph = Tab:Paragraph({
     Title = "Executor Information",
     Desc = "Executor: " .. getExecutor(),
-    Color = "Red",
+    Color = "#9333ea",
     Image = "",
     ImageSize = 30,
     Thumbnail = "",
@@ -667,96 +667,147 @@ Tab:Dropdown({
 
 Tab:Divider()
 
+-- Services
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
 
-local DEFAULT_COLOR = Color3.fromRGB(255, 255, 255)
-local FILL_TRANSPARENCY = 0.5
-local OUTLINE_TRANSPARENCY = 0
+-- Tables to store objects
+local ESP_Objects = {}
+local Chams_Objects = {}
 
-local CHAMS_ENABLED = false
-local highlights = {}
+-- Toggleable flags
+local ESP_Enabled = false
+local Chams_Enabled = false
 
-local function getTeamColor(player)
-	if player.Team and player.Team.TeamColor then
-		return player.Team.TeamColor.Color
-	end
-	return DEFAULT_COLOR
+-- Function to create chams highlight
+local function createChams(player)
+    if player == LocalPlayer then return end
+    local character = player.Character
+    if character and character:FindFirstChild("HumanoidRootPart") then
+        local root = character.HumanoidRootPart
+
+        local highlight = Instance.new("BoxHandleAdornment")
+        highlight.Name = "ChamsHighlight"
+        highlight.Adornee = root
+        highlight.Size = Vector3.new(2,2,1)
+        highlight.Color3 = Color3.fromRGB(255,0,0)
+        highlight.Transparency = 0.5
+        highlight.AlwaysOnTop = true
+        highlight.ZIndex = 10
+        highlight.Visible = Chams_Enabled
+        highlight.Parent = root
+
+        Chams_Objects[player] = highlight
+    end
 end
 
-local function applyChams(player)
-	if not CHAMS_ENABLED then return end
-	if player == LocalPlayer then return end
-	if not player.Character then return end
-
-	if highlights[player] then
-		highlights[player]:Destroy()
-	end
-
-	local h = Instance.new("Highlight")
-	h.Name = "TeamChams"
-	h.FillColor = getTeamColor(player)
-	h.OutlineColor = Color3.new(1, 1, 1)
-	h.FillTransparency = FILL_TRANSPARENCY
-	h.OutlineTransparency = OUTLINE_TRANSPARENCY
-	h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-	h.Adornee = player.Character
-	h.Parent = player.Character
-
-	highlights[player] = h
+-- Apply chams to all existing players
+for _, p in pairs(Players:GetPlayers()) do
+    createChams(p)
 end
 
-local function removeChams(player)
-	if highlights[player] then
-		highlights[player]:Destroy()
-		highlights[player] = nil
-	end
+-- Apply chams to new players
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function()
+        createChams(player)
+    end)
+end)
+
+-- Function to toggle chams
+local function toggleChams()
+    -- If ESP is on, turn it off first
+    if ESP_Enabled then
+        ESP_Enabled = false
+        for _, gui in pairs(ESP_Objects) do
+            gui:Destroy()
+        end
+        ESP_Objects = {}
+    end
+
+    Chams_Enabled = not Chams_Enabled
+    for player, highlight in pairs(Chams_Objects) do
+        if highlight and highlight.Parent then
+            highlight.Visible = Chams_Enabled
+        end
+    end
 end
 
-local function setupPlayer(player)
-	player.CharacterAdded:Connect(function()
-		task.wait(1)
-		applyChams(player)
-	end)
-
-	player:GetPropertyChangedSignal("Team"):Connect(function()
-		if CHAMS_ENABLED then
-			applyChams(player)
-		end
-	end)
-end
-
-for _, p in ipairs(Players:GetPlayers()) do
-	setupPlayer(p)
-	if p.Character then
-		applyChams(p)
-	end
-end
-
-Players.PlayerAdded:Connect(setupPlayer)
-
-local Toggle = Tab:Toggle({
-    Title = "Team Chams",
-    Desc = "Highlights players using their team color",
-    Icon = "eye",
-    Type = "Checkbox",
-    Value = false,
-    Callback = function(state)
-        CHAMS_ENABLED = state
-
-        if state then
-            for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
-                if p.Character then
-                    applyChams(p)
-                end
-            end
-        else
-            for p in pairs(highlights) do
-                removeChams(p)
+-- Function to toggle ESP
+local function toggleESP()
+    -- If Chams is on, turn it off first
+    if Chams_Enabled then
+        Chams_Enabled = false
+        for player, highlight in pairs(Chams_Objects) do
+            if highlight and highlight.Parent then
+                highlight.Visible = false
             end
         end
     end
+
+    ESP_Enabled = not ESP_Enabled
+
+    -- Clear existing ESP
+    for _, gui in pairs(ESP_Objects) do
+        gui:Destroy()
+    end
+    ESP_Objects = {}
+
+    if ESP_Enabled then
+        RunService.RenderStepped:Connect(function()
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    local root = player.Character.HumanoidRootPart
+                    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+                    local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
+                    if onScreen then
+                        local gui = ESP_Objects[player] or Instance.new("BillboardGui")
+                        gui.Name = "ESP_"..player.Name
+                        gui.Adornee = root
+                        gui.Size = UDim2.new(0, 100, 0, 50)
+                        gui.StudsOffset = Vector3.new(0, 3, 0)
+                        gui.AlwaysOnTop = true
+
+                        local textLabel = gui:FindFirstChild("Label") or Instance.new("TextLabel")
+                        textLabel.Name = "Label"
+                        textLabel.BackgroundTransparency = 1
+                        textLabel.Size = UDim2.new(1,0,1,0)
+                        textLabel.TextColor3 = Color3.fromRGB(255,255,255)
+                        textLabel.TextStrokeTransparency = 0
+                        textLabel.Font = Enum.Font.SourceSansBold
+                        textLabel.TextSize = 14
+                        textLabel.Text = string.format("%s\nHP: %d\nDist: %.1f", player.Name, humanoid.Health, (root.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude)
+                        textLabel.Parent = gui
+
+                        gui.Parent = game:GetService("CoreGui")
+                        ESP_Objects[player] = gui
+                    end
+                end
+            end
+        end)
+    end
+end
+
+-- Wind UI buttons
+local Chams_Button = Tab:Button({
+    Title = "Toggle Chams",
+    Desc = "Highlights players",
+    Locked = false,
+    Callback = function()
+        toggleChams()
+    end
 })
+
+local ESP_Button = Tab:Button({
+    Title = "Toggle ESP",
+    Desc = "Highlight player, shows name, HP, and distance",
+    Locked = false,
+    Callback = function()
+        toggleESP()
+    end
+})
+
 
 Tab:Divider()
 
