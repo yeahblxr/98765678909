@@ -1,6 +1,19 @@
--- hahahv70
+-- hahahv69
 loadstring(game:HttpGet("https://raw.githubusercontent.com/yeahblxr/Scripts/refs/heads/main/Midnight-intro.lua"))()
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+
+-- Global Services Declaration
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local StarterGui = game:GetService("StarterGui")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+local Lighting = game:GetService("Lighting")
+
+local Camera = workspace.CurrentCamera
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
 
 WindUI:SetNotificationLower(true)
 
@@ -141,16 +154,58 @@ Window:OnDestroy(function()
     gui:Destroy()
 end)
 
+
+
 Window:Tag({
-    Title = "V1.7.0",
+    Title = "Premium",
+    Color = Color3.fromHex("#daa520")
+})
+
+
+Window:Tag({
+    Title = "V1.6.1",
     Color = Color3.fromHex("#663399")
 })
+
+
 
 -- Reorganized tabs start here
 local Tab = Window:Tab({
     Title = "Home",
     Icon = "house",
     Locked = false,
+})
+
+local function getExecutor()
+    if identifyexecutor then
+        return identifyexecutor()
+    elseif getexecutorname then
+        return getexecutorname()
+    else
+        return "Unknown Executor"
+    end
+end
+
+local Paragraph = Tab:Paragraph({
+    Title = "Executor Information",
+    Desc = "Executor: " .. getExecutor(),
+    Color = "Red",
+    Image = "",
+    ImageSize = 30,
+    Thumbnail = "",
+    ThumbnailSize = 80,
+    Locked = false
+})
+
+local Button = Tab:Button({
+    Title = "Open Roblox Console",
+    Desc = "Opens the developer console",
+    Locked = false,
+    Callback = function()
+        pcall(function()
+            StarterGui:SetCore("DevConsoleVisible", true)
+        end)
+    end
 })
 
 local Button = Tab:Button({
@@ -247,10 +302,6 @@ local Slider = Tab:Slider({
     end
 })
 -- Inf Jump start
-local UserInputService = game:GetService("UserInputService")
-local Players = game:GetService("Players")
-local localPlayer = Players.LocalPlayer
-
 local infiniteJumpConnection
 
 local Toggle = Tab:Toggle({
@@ -264,7 +315,7 @@ local Toggle = Tab:Toggle({
             if infiniteJumpConnection then return end
 
             infiniteJumpConnection = UserInputService.JumpRequest:Connect(function()
-                local character = localPlayer.Character
+                local character = LocalPlayer.Character
                 if not character then return end
                 local humanoid = character:FindFirstChildOfClass("Humanoid")
                 if humanoid and humanoid.Health > 0 then
@@ -338,13 +389,11 @@ local Toggle = Tab:Toggle({
 })
 
 -- Moon Gravity
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
 local originalJumpPower
 local originalGravity = workspace.Gravity
 
 local function toggleMoonGravity(state)
-    local character = player.Character or player.CharacterAdded:Wait()
+    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     local humanoid = character:WaitForChild("Humanoid")
 
     if state then
@@ -372,15 +421,6 @@ local Tab = Window:Tab({
     Icon = "swords",
     Locked = false,
 })
-
---// Services
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local Camera = workspace.CurrentCamera
-local Workspace = game:GetService("Workspace")
-
-local LocalPlayer = Players.LocalPlayer
 
 --// State
 local AimbotEnabled = false
@@ -945,14 +985,11 @@ local Button = Tab:Button({
 -- Fling Player
 Tab:Divider()
 
-local Players = game:GetService("Players")
-local Player = Players.LocalPlayer
-
-getgenv().FPDH = workspace.FallenPartsDestroyHeight
+getgenv().FPDH = Workspace.FallenPartsDestroyHeight
 getgenv().OldPos = nil
 
 local Message = function(_Title, _Text, Time)
-    game:GetService("StarterGui"):SetCore("SendNotification", {
+    StarterGui:SetCore("SendNotification", {
         Title = _Title,
         Text = _Text,
         Duration = Time
@@ -961,7 +998,7 @@ end
 
 
 local SkidFling = function(TargetPlayer)
-    local Character = Player.Character
+    local Character = LocalPlayer.Character
     local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
     local RootPart = Humanoid and Humanoid.RootPart
 
@@ -1061,7 +1098,7 @@ local function GetPlayerNames()
 
     -- add all players except you
     for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= Player then
+        if plr ~= LocalPlayer then
             table.insert(names, plr.Name)
         end
     end
@@ -1115,7 +1152,7 @@ local Button = Tab:Button({
 
         if SelectedTarget == "All" then
             for _, tp in ipairs(Players:GetPlayers()) do
-                if tp ~= Player then
+                if tp ~= LocalPlayer then
                     SkidFling(tp)
                 end
             end
@@ -1146,7 +1183,7 @@ local Toggle = Tab:Toggle({
                 if SelectedTarget then
                     if SelectedTarget == "All" then
                         for _, targetPlayer in ipairs(Players:GetPlayers()) do
-                            if targetPlayer ~= Player then
+                            if targetPlayer ~= LocalPlayer then
                                 SkidFling(targetPlayer)
                             end
                         end
@@ -1323,22 +1360,18 @@ local Button = Tab:Button({
     Desc = "Removes the fog.",
     Locked = false,
     Callback = function()
-         local function removeFog()
-    local lighting = game:GetService("Lighting")
-    lighting.FogEnd = 1e10
-    lighting.FogStart = 1e10
-    lighting.FogColor = Color3.new(1, 1, 1) -- Optional: Set to desired color
-end
+        local function removeFog()
+            Lighting.FogEnd = 1e10
+            Lighting.FogStart = 1e10
+            Lighting.FogColor = Color3.new(1, 1, 1)
+        end
 
+        removeFog()
 
-
-removeFog()
-
-game:GetService("Lighting"):GetPropertyChangedSignal("FogEnd"):Connect(removeFog)
-game:GetService("Lighting"):GetPropertyChangedSignal("FogStart"):Connect(removeFog)
-game:GetService("Lighting"):GetPropertyChangedSignal("FogColor"):Connect(removeFog)
-
-game:GetService("Lighting").Changed:Connect(removeFog)
+        Lighting:GetPropertyChangedSignal("FogEnd"):Connect(removeFog)
+        Lighting:GetPropertyChangedSignal("FogStart"):Connect(removeFog)
+        Lighting:GetPropertyChangedSignal("FogColor"):Connect(removeFog)
+        Lighting.Changed:Connect(removeFog)
     end
 })
 
@@ -1492,7 +1525,7 @@ local Input = Tab:Input({
         -- Only teleport if input is not empty and not default placeholder text
         if JobIdTextBoxValue ~= "" and JobIdTextBoxValue:lower() ~= "jobid" then
             local success, errorMessage = pcall(function()
-                game:GetService("TeleportService"):TeleportToPlaceInstance(placeId, JobIdTextBoxValue, game.Players.LocalPlayer)
+                TeleportService:TeleportToPlaceInstance(placeId, JobIdTextBoxValue, LocalPlayer)
             end)
             if not success then
                 warn("Teleport failed: " .. tostring(errorMessage))
@@ -1508,19 +1541,7 @@ local Button = Tab:Button({
     Desc = "Rejoin same server",
     Locked = false,
     Callback = function()
-        local ts = game:GetService("TeleportService")
-
-
-
-local p = game:GetService("Players").LocalPlayer
-
-
-
-
-
-
-
-ts:TeleportToPlaceInstance(game.PlaceId, game.JobId, p)
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
     end
 })
 
@@ -1529,25 +1550,22 @@ local Button = Tab:Button({
     Desc = "Changes your server",
     Locked = false,
     Callback = function()
-        local TeleportService = game:GetService("TeleportService")
-local HttpService = game:GetService("HttpService")
+        local Servers = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+        local Server, Next = nil, nil
+        local function ListServers(cursor)
+            local Raw = game:HttpGet(Servers .. ((cursor and "&cursor=" .. cursor) or ""))
+            return HttpService:JSONDecode(Raw)
+        end
 
-local Servers = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
-local Server, Next = nil, nil
-local function ListServers(cursor)
-    local Raw = game:HttpGet(Servers .. ((cursor and "&cursor=" .. cursor) or ""))
-    return HttpService:JSONDecode(Raw)
-end
+        repeat
+            local ServerList = ListServers(Next)
+            Server = ServerList.data[math.random(1, (#ServerList.data / 3))]
+            Next = ServerList.nextPageCursor
+        until Server
 
-repeat
-    local Servers = ListServers(Next)
-    Server = Servers.data[math.random(1, (#Servers.data / 3))]
-    Next = Servers.nextPageCursor
-until Server
-
-if Server.playing < Server.maxPlayers and Server.id ~= game.JobId then
-    TeleportService:TeleportToPlaceInstance(game.PlaceId, Server.id, game.Players.LocalPlayer)
-end
+        if Server.playing < Server.maxPlayers and Server.id ~= game.JobId then
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, Server.id, LocalPlayer)
+        end
     end
 })
 
