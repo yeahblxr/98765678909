@@ -1,6 +1,22 @@
--- hahahv69
 loadstring(game:HttpGet("https://raw.githubusercontent.com/yeahblxr/Scripts/refs/heads/main/Midnight-intro.lua"))()
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local StarterGui = game:GetService("StarterGui")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+local CoreGui = game:GetService("CoreGui")
+local player = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+local VirtualUser = game:GetService("VirtualUser")
+
+
 
 WindUI:SetNotificationLower(true)
 
@@ -60,11 +76,14 @@ Window:EditOpenButton({
     Enabled = false
 })
 
+local ConfigManager = Window.ConfigManager
+local myConfig = ConfigManager:CreateConfig("MidnightHubPremium")
+
 local gui = Instance.new("ScreenGui")
 gui.Name = "StrikeXMenuGUI"
 gui.IgnoreGuiInset = true
 gui.ResetOnSpawn = false
-gui.Parent = game.CoreGui
+gui.Parent = CoreGui
 
 local button = Instance.new("ImageButton")
 button.Size = UDim2.new(0, 60, 0, 60)
@@ -113,7 +132,7 @@ button.InputChanged:Connect(function(input)
     end
 end)
 
-game:GetService("UserInputService").InputChanged:Connect(function(input)
+UserInputService.InputChanged:Connect(function(input)
     if input == dragInput and dragging then
         local delta = input.Position - dragStart
         button.Position = UDim2.new(
@@ -142,15 +161,69 @@ Window:OnDestroy(function()
 end)
 
 Window:Tag({
-    Title = "V1.7.0",
+    Title = "Free",
     Color = Color3.fromHex("#663399")
 })
 
--- Reorganized tabs start here
+Window:Tag({
+    Title = "V1.6.1",
+    Color = Color3.fromHex("#663399")
+})
+
+
+
+
 local Tab = Window:Tab({
     Title = "Home",
     Icon = "house",
     Locked = false,
+})
+
+
+
+
+local function getExecutor()
+    if identifyexecutor then
+        return identifyexecutor()
+    elseif getexecutorname then
+        return getexecutorname()
+    else
+        return "Unknown Executor"
+    end
+end
+
+local Paragraph = Tab:Paragraph({
+    Title = "Executor Information",
+    Desc = "Executor: " .. getExecutor(),
+    Color = Color3.fromRGB(147, 51, 234),
+    Transparency = 0.42, 
+    Image = "",
+    ImageSize = 30,
+    Thumbnail = "",
+    ThumbnailSize = 80,
+    Locked = false
+})
+
+local Keybind = Tab:Keybind({
+    Title = "Keybind",
+    Desc = "Keybind to open ui",
+    Value = "G",
+    Flag = "KeybindElement",
+    Callback = function(v)
+        Window:SetToggleKey(Enum.KeyCode[v])
+    end
+})
+myConfig:Register("KeybindElement", Keybind)
+
+local Button = Tab:Button({
+    Title = "Open Roblox Console",
+    Desc = "Opens the developer console",
+    Locked = false,
+    Callback = function()
+        pcall(function()
+            StarterGui:SetCore("DevConsoleVisible", true)
+        end)
+    end
 })
 
 local Button = Tab:Button({
@@ -222,7 +295,7 @@ local Tab = Window:Tab({
 local Slider = Tab:Slider({
     Title = "Walkspeed",
     Step = 2,
-    
+    Flag = "WalkspeedSlider",
     Value = {
         Min = 1,
         Max = 500,
@@ -232,11 +305,12 @@ local Slider = Tab:Slider({
         game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = value
     end
 })
+myConfig:Register("WalkspeedSlider", Slider)
 
 local Slider = Tab:Slider({
     Title = "Jumppower",
     Step = 10,
-    
+    Flag = "JumppowerSlider",
     Value = {
         Min = 1,
         Max = 1000,
@@ -246,10 +320,7 @@ local Slider = Tab:Slider({
         game.Players.LocalPlayer.Character.Humanoid.JumpPower = value
     end
 })
--- Inf Jump start
-local UserInputService = game:GetService("UserInputService")
-local Players = game:GetService("Players")
-local localPlayer = Players.LocalPlayer
+myConfig:Register("JumppowerSlider", Slider)
 
 local infiniteJumpConnection
 
@@ -259,12 +330,13 @@ local Toggle = Tab:Toggle({
     Icon = "infinity",
     Type = "Checkbox",
     Default = false,
+    Flag = "InfiniteJumpToggle",
     Callback = function(enabled) 
         if enabled then
             if infiniteJumpConnection then return end
 
             infiniteJumpConnection = UserInputService.JumpRequest:Connect(function()
-                local character = localPlayer.Character
+                local character = LocalPlayer.Character
                 if not character then return end
                 local humanoid = character:FindFirstChildOfClass("Humanoid")
                 if humanoid and humanoid.Health > 0 then
@@ -279,6 +351,7 @@ local Toggle = Tab:Toggle({
         end
     end,
 })
+myConfig:Register("InfiniteJumpToggle", Toggle)
 
 local Button = Tab:Button({
     Title = "Fly Gui",
@@ -297,6 +370,7 @@ local Toggle = Tab:Toggle({
     Icon = "brick-wall",
     Type = "Checkbox",
     Default = false,
+    Flag = "NoclipToggle",
     Callback = function(Value) 
         if not _G._noclipConnection then _G._noclipConnection = nil end
 
@@ -336,22 +410,20 @@ local Toggle = Tab:Toggle({
         end
     end,
 })
+myConfig:Register("NoclipToggle", Toggle)
 
--- Moon Gravity
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
 local originalJumpPower
-local originalGravity = workspace.Gravity
+local originalGravity = Workspace.Gravity
 
 local function toggleMoonGravity(state)
-    local character = player.Character or player.CharacterAdded:Wait()
+    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     local humanoid = character:WaitForChild("Humanoid")
 
     if state then
         originalJumpPower = humanoid.JumpPower
-        workspace.Gravity = 50
+        Workspace.Gravity = 50
     else
-        workspace.Gravity = originalGravity
+        Workspace.Gravity = originalGravity
         humanoid.JumpPower = originalJumpPower or 50
     end
 end
@@ -362,10 +434,12 @@ local Toggle = Tab:Toggle({
     Icon = "moon",
     Type = "Checkbox",
     Default = false,
+    Flag = "MoonGravityToggle",
     Callback = function(value)
         toggleMoonGravity(value)
     end,
 })
+myConfig:Register("MoonGravityToggle", Toggle)
 
 local Tab = Window:Tab({
     Title = "Combat",
@@ -373,16 +447,7 @@ local Tab = Window:Tab({
     Locked = false,
 })
 
---// Services
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local Camera = workspace.CurrentCamera
-local Workspace = game:GetService("Workspace")
 
-local LocalPlayer = Players.LocalPlayer
-
---// State
 local AimbotEnabled = false
 local ShowFOV = false
 local UnlockFOV = false
@@ -392,13 +457,13 @@ local WallCheckEnabled = false
 local FOVRadius = 150
 local AimPart = "Head"
 
---// FOV Position
+
 local FOVPosition = Vector2.new(
     Camera.ViewportSize.X / 2,
     Camera.ViewportSize.Y / 2
 )
 
---// FOV Circle
+
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Visible = false
 FOVCircle.Filled = false
@@ -406,7 +471,7 @@ FOVCircle.Thickness = 2
 FOVCircle.Radius = FOVRadius
 FOVCircle.Color = Color3.fromRGB(255, 255, 0)
 
---// Aim Part Mapping (R6 + R15 SAFE)
+
 local AimPartMap = {
     Head = { "Head" },
 
@@ -445,7 +510,7 @@ local function GetAimPartFromCharacter(character)
     return nil
 end
 
---// Wall Check
+
 local function IsVisible(targetPart, character)
     if not WallCheckEnabled then
         return true
@@ -466,7 +531,7 @@ local function IsVisible(targetPart, character)
     return result == nil
 end
 
---// Target Finder
+
 local function GetClosestTarget()
     local closestPart = nil
     local shortestDistance = math.huge
@@ -500,7 +565,7 @@ local function GetClosestTarget()
     return closestPart
 end
 
---// Main Loop
+
 RunService.RenderStepped:Connect(function()
     local viewport = Camera.ViewportSize
     local mousePos = UserInputService:GetMouseLocation()
@@ -523,7 +588,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
---// UI
+
 
 Tab:Toggle({
     Title = "Enable Aimbot",
@@ -531,29 +596,34 @@ Tab:Toggle({
     Icon = "target",
     Type = "Checkbox",
     Value = false,
+    Flag = "AimbotToggle",
     Callback = function(state)
         AimbotEnabled = state
     end
 })
+myConfig:Register("AimbotToggle", AimbotToggle)
 
-Tab:Toggle({
+local ShowFOVToggle = Tab:Toggle({
     Title = "Show FOV",
     Desc = "Toggle FOV circle",
     Icon = "circle",
     Type = "Checkbox",
     Value = false,
+    Flag = "ShowFOVToggle",
     Callback = function(state)
         ShowFOV = state
     end
 })
+myConfig:Register("ShowFOVToggle", ShowFOVToggle)
 
-Tab:Input({
+local FOVColorInput = Tab:Input({
     Title = "FOV Color (RGB)",
     Desc = "Example: 255, 255, 0",
     Value = "255, 255, 0",
     InputIcon = "palette",
     Type = "Input",
     Placeholder = "R, G, B",
+    Flag = "FOVColorInput",
     Callback = function(input)
         local r, g, b = input:match("(%d+)%s*,%s*(%d+)%s*,%s*(%d+)")
         r, g, b = tonumber(r), tonumber(g), tonumber(b)
@@ -566,47 +636,55 @@ Tab:Input({
         end
     end
 })
+myConfig:Register("FOVColorInput", FOVColorInput)
 
-Tab:Toggle({
+local UnlockFOVToggle = Tab:Toggle({
     Title = "Unlock FOV",
     Desc = "Move FOV with mouse/finger",
     Icon = "move",
     Type = "Checkbox",
     Value = false,
+    Flag = "UnlockFOVToggle",
     Callback = function(state)
         UnlockFOV = state
     end
 })
+myConfig:Register("UnlockFOVToggle", UnlockFOVToggle)
 
-Tab:Toggle({
+local TeamCheckToggle = Tab:Toggle({
     Title = "Team Check",
     Desc = "Ignore teammates",
     Icon = "users",
     Type = "Checkbox",
     Value = false,
+    Flag = "TeamCheckToggle",
     Callback = function(state)
         TeamCheckEnabled = state
     end
 })
+myConfig:Register("TeamCheckToggle", TeamCheckToggle)
 
-Tab:Toggle({
+local WallCheckToggle = Tab:Toggle({
     Title = "Wall Check",
     Desc = "Only visible targets",
     Icon = "eye",
     Type = "Checkbox",
     Value = false,
+    Flag = "WallCheckToggle",
     Callback = function(state)
         WallCheckEnabled = state
     end
 })
+myConfig:Register("WallCheckToggle", WallCheckToggle)
 
-Tab:Input({
+local FOVSizeInput = Tab:Input({
     Title = "FOV Size",
     Desc = "Change FOV radius",
     Value = tostring(FOVRadius),
     InputIcon = "ruler",
     Type = "Input",
     Placeholder = "Enter number...",
+    Flag = "FOVSizeInput",
     Callback = function(input)
         local num = tonumber(input)
         if num then
@@ -614,122 +692,202 @@ Tab:Input({
         end
     end
 })
+myConfig:Register("FOVSizeInput", FOVSizeInput)
 
-Tab:Dropdown({
+local AimPartDropdown = Tab:Dropdown({
     Title = "Aim Part",
     Desc = "Select body group",
     Values = { "Head", "Torso", "Arms", "Legs" },
     Value = "Head",
+    Flag = "AimPartDropdown",
     Callback = function(option)
         AimPart = option
     end
 })
+myConfig:Register("AimPartDropdown", AimPartDropdown)
 
 Tab:Divider()
 
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
 
-local DEFAULT_COLOR = Color3.fromRGB(255, 255, 255)
-local FILL_TRANSPARENCY = 0.5
-local OUTLINE_TRANSPARENCY = 0
+-- ===== UNIFIED CHAMS + ESP =====
 
-local CHAMS_ENABLED = false
-local highlights = {}
+local ESP_Objects = {}
+local Chams_Enabled = false
+local ESP_Enabled = false
 
-local function getTeamColor(player)
-	if player.Team and player.Team.TeamColor then
-		return player.Team.TeamColor.Color
-	end
-	return DEFAULT_COLOR
+local function getPlayerColor(player)
+    if player.Team and player.Team.TeamColor then
+        return player.Team.TeamColor.Color
+    end
+    return Color3.fromRGB(255, 255, 255) -- default white
 end
 
-local function applyChams(player)
-	if not CHAMS_ENABLED then return end
-	if player == LocalPlayer then return end
-	if not player.Character then return end
+local function createHighlight(player)
+    if player == LocalPlayer then return end
+    local character = player.Character
+    if not character then return end
 
-	if highlights[player] then
-		highlights[player]:Destroy()
-	end
+    -- destroy old highlight if exists
+    if ESP_Objects[player] then
+        if ESP_Objects[player].highlight and ESP_Objects[player].highlight.Parent then
+            ESP_Objects[player].highlight:Destroy()
+        end
+        if ESP_Objects[player].textBillboard and ESP_Objects[player].textBillboard.Parent then
+            ESP_Objects[player].textBillboard:Destroy()
+        end
+    end
 
-	local h = Instance.new("Highlight")
-	h.Name = "TeamChams"
-	h.FillColor = getTeamColor(player)
-	h.OutlineColor = Color3.new(1, 1, 1)
-	h.FillTransparency = FILL_TRANSPARENCY
-	h.OutlineTransparency = OUTLINE_TRANSPARENCY
-	h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-	h.Adornee = player.Character
-	h.Parent = player.Character
+    -- Create Highlight
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "PlayerHighlight"
+    highlight.Adornee = character
+    highlight.FillColor = getPlayerColor(player)
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0
+    highlight.OutlineColor = Color3.fromRGB(0, 0, 0)
+    highlight.Enabled = Chams_Enabled or ESP_Enabled
+    highlight.Parent = character
 
-	highlights[player] = h
+    -- Create Text Billboard (only shown when ESP enabled)
+    local textBillboard = Instance.new("BillboardGui")
+    textBillboard.Name = "ESP_Text"
+    textBillboard.Adornee = character:FindFirstChild("HumanoidRootPart")
+    textBillboard.Size = UDim2.new(0, 250, 0, 20)
+    textBillboard.StudsOffset = Vector3.new(0, 3, 0)
+    textBillboard.AlwaysOnTop = true
+    textBillboard.Enabled = ESP_Enabled
+
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Font = Enum.Font.SourceSansBold
+    textLabel.TextColor3 = getPlayerColor(player)
+    textLabel.TextSize = 14
+    textLabel.Parent = textBillboard
+
+    textBillboard.Parent = CoreGui
+
+    ESP_Objects[player] = {
+        highlight = highlight,
+        textBillboard = textBillboard,
+        textLabel = textLabel,
+        character = character
+    }
 end
 
-local function removeChams(player)
-	if highlights[player] then
-		highlights[player]:Destroy()
-		highlights[player] = nil
-	end
+-- Apply highlights to existing players
+for _, p in pairs(Players:GetPlayers()) do
+    createHighlight(p)
+    p.CharacterAdded:Connect(function()
+        task.wait(0.5)
+        createHighlight(p)
+    end)
 end
 
-local function setupPlayer(player)
-	player.CharacterAdded:Connect(function()
-		task.wait(1)
-		applyChams(player)
-	end)
+-- Apply highlights to new players joining
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function()
+        task.wait(0.5)
+        createHighlight(player)
+    end)
+end)
 
-	player:GetPropertyChangedSignal("Team"):Connect(function()
-		if CHAMS_ENABLED then
-			applyChams(player)
-		end
-	end)
-end
+-- Update text display every frame
+RunService.RenderStepped:Connect(function()
+    for player, obj in pairs(ESP_Objects) do
+        if obj.highlight and obj.highlight.Parent then
+            -- Update highlight color in case team changed
+            obj.highlight.FillColor = getPlayerColor(player)
+            obj.textLabel.TextColor3 = getPlayerColor(player)
+        end
 
-for _, p in ipairs(Players:GetPlayers()) do
-	setupPlayer(p)
-	if p.Character then
-		applyChams(p)
-	end
-end
+        if ESP_Enabled and obj.textBillboard and obj.textBillboard.Parent then
+            local character = player.Character
+            if character then
+                local root = character:FindFirstChild("HumanoidRootPart")
+                local humanoid = character:FindFirstChildOfClass("Humanoid")
+                if root then
+                    local distance = (root.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+                    obj.textBillboard.Adornee = root
+                    obj.textLabel.Text = string.format("%s | HP: %.0f | Dist: %.1f",
+                        player.Name,
+                        humanoid and humanoid.Health or 0,
+                        distance
+                    )
+                end
+            end
+        end
+    end
+end)
 
-Players.PlayerAdded:Connect(setupPlayer)
-
-local Toggle = Tab:Toggle({
-    Title = "Team Chams",
-    Desc = "Highlights players using their team color",
+-- Chams Toggle
+local Chams_Toggle = Tab:Toggle({
+    Title = "Chams",
+    Desc = "Highlight players with team color",
     Icon = "eye",
     Type = "Checkbox",
     Value = false,
+    Flag = "ChamsToggle",
     Callback = function(state)
-        CHAMS_ENABLED = state
-
-        if state then
-            for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
-                if p.Character then
-                    applyChams(p)
+        Chams_Enabled = state
+        if state and ESP_Enabled then
+            ESP_Enabled = false
+            for _, obj in pairs(ESP_Objects) do
+                if obj.textBillboard then
+                    obj.textBillboard.Enabled = false
                 end
             end
-        else
-            for p in pairs(highlights) do
-                removeChams(p)
+        end
+        for _, obj in pairs(ESP_Objects) do
+            if obj.highlight then
+                obj.highlight.Enabled = Chams_Enabled or ESP_Enabled
             end
         end
     end
 })
+myConfig:Register("ChamsToggle", Chams_Toggle)
+
+local ESP_Toggle = Tab:Toggle({
+    Title = "ESP",
+    Desc = "Highlight players + show name, HP, distance",
+    Icon = "eye",
+    Type = "Checkbox",
+    Value = false,
+    Flag = "ESPToggle",
+    Callback = function(state)
+        ESP_Enabled = state
+        if state and Chams_Enabled then
+            Chams_Enabled = false
+            for _, obj in pairs(ESP_Objects) do
+                if obj.highlight then
+                    obj.highlight.Enabled = false
+                end
+            end
+        end
+        for _, obj in pairs(ESP_Objects) do
+            if obj.highlight then
+                obj.highlight.Enabled = Chams_Enabled or ESP_Enabled
+            end
+            if obj.textBillboard then
+                obj.textBillboard.Enabled = ESP_Enabled
+            end
+        end
+    end
+})
+myConfig:Register("ESPToggle", ESP_Toggle)
 
 Tab:Divider()
 
---// HITBOX STATE
+
 local HITBOX_ENABLED = false
 local HITBOX_SIZE = 10
 local HITBOX_TRANSPARENCY = 0.5
 local HITBOX_COLOR = Color3.fromRGB(255, 0, 0)
-local HITBOX_PART = "Body" -- "Body" or "Head"
+local HITBOX_PART = "Body" 
 
 local modified = {}
 
---// GET TARGET PART
+
 local function getTargetPart(character)
 	if HITBOX_PART == "Head" then
 		return character:FindFirstChild("Head")
@@ -738,7 +896,7 @@ local function getTargetPart(character)
 	end
 end
 
---// APPLY HITBOX
+
 local function applyHitbox(player)
 	if player == LocalPlayer then return end
 	if not player.Character then return end
@@ -767,7 +925,7 @@ local function applyHitbox(player)
 	part.CanCollide = false
 end
 
---// REMOVE HITBOX
+
 local function removeHitbox(player)
 	if not modified[player] then return end
 	if not player.Character then return end
@@ -785,7 +943,7 @@ local function removeHitbox(player)
 	modified[player] = nil
 end
 
---// UPDATE ALL
+
 local function updateAll()
 	for _, player in ipairs(Players:GetPlayers()) do
 		if HITBOX_ENABLED then
@@ -797,7 +955,7 @@ local function updateAll()
 	end
 end
 
---// PLAYER HANDLING
+
 Players.PlayerAdded:Connect(function(player)
 	player.CharacterAdded:Connect(function()
 		task.wait(1)
@@ -816,31 +974,29 @@ for _, player in ipairs(Players:GetPlayers()) do
 	end)
 end
 
---// ======================
---// UI CONTROLS
---// ======================
 
--- ENABLE HITBOX
 Tab:Toggle({
 	Title = "Hitbox Expander",
 	Desc = "Enable expanded hitboxes",
 	Icon = "target",
 	Type = "Checkbox",
 	Value = false,
+	Flag = "HitboxExpanderToggle",
 	Callback = function(state)
 		HITBOX_ENABLED = state
 		updateAll()
 	end
 })
+myConfig:Register("HitboxExpanderToggle", HitboxToggle)
 
--- HITBOX SIZE
-Tab:Input({
+local HitboxSizeInput = Tab:Input({
 	Title = "Hitbox Size",
 	Desc = "Recommended: 8 - 20",
 	Value = tostring(HITBOX_SIZE),
 	InputIcon = "maximize",
 	Type = "Input",
 	Placeholder = "Enter number",
+	Flag = "HitboxSizeInput",
 	Callback = function(input)
 		local size = tonumber(input)
 		if size then
@@ -851,13 +1007,14 @@ Tab:Input({
 		end
 	end
 })
+myConfig:Register("HitboxSizeInput", HitboxSizeInput)
 
--- HITBOX PART DROPDOWN (BODY / HEAD)
-Tab:Dropdown({
+local HitboxTargetDropdown = Tab:Dropdown({
 	Title = "Hitbox Target",
 	Desc = "Choose which part to expand",
 	Values = { "Body", "Head" },
 	Value = "Body",
+	Flag = "HitboxTargetDropdown",
 	Callback = function(option)
 		HITBOX_PART = option
 		if HITBOX_ENABLED then
@@ -865,12 +1022,13 @@ Tab:Dropdown({
 		end
 	end
 })
+myConfig:Register("HitboxTargetDropdown", HitboxTargetDropdown)
 
--- HITBOX TRANSPARENCY
-Tab:Slider({
+local HitboxTransparencySlider = Tab:Slider({
 	Title = "Hitbox Transparency",
 	Desc = "0 = visible | 1 = invisible",
 	Step = 0.05,
+	Flag = "HitboxTransparencySlider",
 	Value = {
 		Min = 0,
 		Max = 1,
@@ -883,15 +1041,16 @@ Tab:Slider({
 		end
 	end
 })
+myConfig:Register("HitboxTransparencySlider", HitboxTransparencySlider)
 
--- HITBOX COLOR (RGB)
-Tab:Input({
+local HitboxColorInput = Tab:Input({
 	Title = "Hitbox Color (RGB)",
 	Desc = "Format: R,G,B  (example: 255,0,0)",
 	Value = "255,0,0",
 	InputIcon = "palette",
 	Type = "Input",
 	Placeholder = "R,G,B",
+	Flag = "HitboxColorInput",
 	Callback = function(input)
 		local r, g, b = input:match("(%d+),(%d+),(%d+)")
 		if r and g and b then
@@ -906,6 +1065,7 @@ Tab:Input({
 		end
 	end
 })
+myConfig:Register("HitboxColorInput", HitboxColorInput)
 
 Tab:Divider()
 
@@ -942,17 +1102,14 @@ local Button = Tab:Button({
     end
 })
 
--- Fling Player
+
 Tab:Divider()
 
-local Players = game:GetService("Players")
-local Player = Players.LocalPlayer
-
-getgenv().FPDH = workspace.FallenPartsDestroyHeight
+getgenv().FPDH = Workspace.FallenPartsDestroyHeight
 getgenv().OldPos = nil
 
 local Message = function(_Title, _Text, Time)
-    game:GetService("StarterGui"):SetCore("SendNotification", {
+    StarterGui:SetCore("SendNotification", {
         Title = _Title,
         Text = _Text,
         Duration = Time
@@ -961,7 +1118,7 @@ end
 
 
 local SkidFling = function(TargetPlayer)
-    local Character = Player.Character
+    local Character = LocalPlayer.Character
     local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
     local RootPart = Humanoid and Humanoid.RootPart
 
@@ -1059,9 +1216,9 @@ end
 local function GetPlayerNames()
     local names = {}
 
-    -- add all players except you
+    
     for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= Player then
+        if plr ~= LocalPlayer then
             table.insert(names, plr.Name)
         end
     end
@@ -1080,13 +1237,13 @@ local Dropdown = Tab:Dropdown({
     Title = "Select Player to Fling",
     Values = GetPlayerNames(),
     Value = "All",
-Callback = function(selectedName)
-    if selectedName == "All" then
-        SelectedTarget = "All"
-    else
-        SelectedTarget = selectedName
+    Callback = function(selectedName)
+        if selectedName == "All" then
+            SelectedTarget = "All"
+        else
+            SelectedTarget = selectedName
+        end
     end
-end
 })
 
 Players.PlayerAdded:Connect(function(plr)
@@ -1115,7 +1272,7 @@ local Button = Tab:Button({
 
         if SelectedTarget == "All" then
             for _, tp in ipairs(Players:GetPlayers()) do
-                if tp ~= Player then
+                if tp ~= LocalPlayer then
                     SkidFling(tp)
                 end
             end
@@ -1138,6 +1295,7 @@ local Toggle = Tab:Toggle({
     Icon = "refresh-ccw", 
     Type = "Checkbox",
     Value = false,
+    Flag = "AutoFlingToggle",
     Callback = function(state)
         AutoFlingEnabled = state
 
@@ -1146,7 +1304,7 @@ local Toggle = Tab:Toggle({
                 if SelectedTarget then
                     if SelectedTarget == "All" then
                         for _, targetPlayer in ipairs(Players:GetPlayers()) do
-                            if targetPlayer ~= Player then
+                            if targetPlayer ~= LocalPlayer then
                                 SkidFling(targetPlayer)
                             end
                         end
@@ -1160,8 +1318,8 @@ local Toggle = Tab:Toggle({
         end)
     end
 })
+myConfig:Register("AutoFlingToggle", Toggle)
 
--- Spectate Player script start
 Tab:Divider()
 
 local function getPlayerNames()
@@ -1185,6 +1343,7 @@ local isSpectating = false
 local spectateConnection = nil
 local originalCFrame = nil
 local currentSpectateTarget = nil
+local SpectateDropdown = nil
 
 local function spectatePlayer(playerName)
     if playerName == "No Players Available" then
@@ -1192,8 +1351,7 @@ local function spectatePlayer(playerName)
         return
     end
     
-    local targetPlayer = game.Players:FindFirstChild(playerName)
-    local localPlayer = game.Players.LocalPlayer
+    local targetPlayer = Players:FindFirstChild(playerName)
     
     if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
         if isSpectating then
@@ -1201,11 +1359,11 @@ local function spectatePlayer(playerName)
         end
         
         if not originalCFrame then
-            originalCFrame = workspace.CurrentCamera.CFrame
+            originalCFrame = Camera.CFrame
         end
         
-        workspace.CurrentCamera.CameraSubject = targetPlayer.Character.Humanoid
-        workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+        Camera.CameraSubject = targetPlayer.Character.Humanoid
+        Camera.CameraType = Enum.CameraType.Custom
         
         currentSpectateTarget = targetPlayer
         isSpectating = true
@@ -1217,19 +1375,17 @@ local function spectatePlayer(playerName)
 end
 
 local function stopSpectating()
-    local localPlayer = game.Players.LocalPlayer
-    
     if isSpectating then
-        if localPlayer.Character and localPlayer.Character:FindFirstChild("Humanoid") then
-            workspace.CurrentCamera.CameraSubject = localPlayer.Character.Humanoid
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            Camera.CameraSubject = LocalPlayer.Character.Humanoid
         end
         
         if originalCFrame then
-            workspace.CurrentCamera.CFrame = originalCFrame
+            Camera.CFrame = originalCFrame
             originalCFrame = nil
         end
         
-        workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+        Camera.CameraType = Enum.CameraType.Custom
         
         isSpectating = false
         currentSpectateTarget = nil
@@ -1238,18 +1394,32 @@ local function stopSpectating()
     end
 end
 
-local playerNames = getPlayerNames()
-local defaultValue = "Select a Player"
-
-local SpectateDropdown = Tab:Dropdown({
-    Title = "Spectate Player",
-    Values = playerNames,
-    Value = defaultValue,
-    Callback = function(option) 
-        print("Player selected: " .. option)
-        spectatePlayer(option)
+local function updatePlayerDropdown()
+    local newPlayerNames = getPlayerNames()
+    
+    if SpectateDropdown then
+        -- Update existing dropdown values instead of recreating
+        SpectateDropdown.Values = newPlayerNames
+    else
+        -- Only create if it doesn't exist
+        SpectateDropdown = Tab:Dropdown({
+            Title = "Spectate Player",
+            Values = newPlayerNames,
+            Value = "None",
+            Callback = function(option) 
+                if option == "None" then
+                    stopSpectating()
+                    return
+                end
+                print("Player selected: " .. option)
+                spectatePlayer(option)
+            end
+        })
     end
-})
+end
+
+-- Initialize dropdown on first load
+updatePlayerDropdown()
 
 local StopSpectateButton = Tab:Button({
     Title = "Stop Spectating",
@@ -1260,39 +1430,14 @@ local StopSpectateButton = Tab:Button({
     end
 })
 
-local function updatePlayerDropdown()
-    local newPlayerNames = getPlayerNames()
-    
-    SpectateDropdown:SetValues(newPlayerNames)
-    
-    if isSpectating and currentSpectateTarget then
-        local targetStillExists = false
-        for _, name in pairs(newPlayerNames) do
-            if name == currentSpectateTarget.Name then
-                targetStillExists = true
-                break
-            end
-        end
-        
-        if not targetStillExists then
-            print("Spectate target left the game, stopping spectate")
-            stopSpectating()
-        end
-    end
-    
-    print("Updated player list")
-end
-
-
-game.Players.PlayerAdded:Connect(function(player)
-    wait(1) 
+Players.PlayerAdded:Connect(function(player)
+    task.wait(1) 
     updatePlayerDropdown()
 end)
 
-game.Players.PlayerRemoving:Connect(function(player)
+Players.PlayerRemoving:Connect(function(player)
     updatePlayerDropdown()
 end)
-
 
 local RefreshButton = Tab:Button({
     Title = "Refresh Player List",
@@ -1300,6 +1445,38 @@ local RefreshButton = Tab:Button({
     Locked = false,
     Callback = function()
         updatePlayerDropdown()
+    end
+})
+
+local AutoFlingEnabled = false
+
+local Toggle = Tab:Toggle({
+    Title = "Auto Fling",
+    Desc = "Automatically fling the selected player repeatedly",
+    Icon = "refresh-ccw", 
+    Type = "Checkbox",
+    Value = false,
+    Flag = "AutoFlingToggle",
+    Callback = function(state)
+        AutoFlingEnabled = state
+
+        task.spawn(function()
+            while AutoFlingEnabled do
+                if SelectedTarget then
+                    if SelectedTarget == "All" then
+                        for _, targetPlayer in ipairs(Players:GetPlayers()) do
+                            if targetPlayer ~= LocalPlayer then
+                                SkidFling(targetPlayer)
+                            end
+                        end
+                    else
+                        local tp = Players:FindFirstChild(SelectedTarget)
+                        if tp then SkidFling(tp) end
+                    end
+                end
+                task.wait(1.5)
+            end
+        end)
     end
 })
 
@@ -1323,22 +1500,18 @@ local Button = Tab:Button({
     Desc = "Removes the fog.",
     Locked = false,
     Callback = function()
-         local function removeFog()
-    local lighting = game:GetService("Lighting")
-    lighting.FogEnd = 1e10
-    lighting.FogStart = 1e10
-    lighting.FogColor = Color3.new(1, 1, 1) -- Optional: Set to desired color
-end
+        local function removeFog()
+            Lighting.FogEnd = 1e10
+            Lighting.FogStart = 1e10
+            Lighting.FogColor = Color3.new(1, 1, 1)
+        end
 
+        removeFog()
 
-
-removeFog()
-
-game:GetService("Lighting"):GetPropertyChangedSignal("FogEnd"):Connect(removeFog)
-game:GetService("Lighting"):GetPropertyChangedSignal("FogStart"):Connect(removeFog)
-game:GetService("Lighting"):GetPropertyChangedSignal("FogColor"):Connect(removeFog)
-
-game:GetService("Lighting").Changed:Connect(removeFog)
+        Lighting:GetPropertyChangedSignal("FogEnd"):Connect(removeFog)
+        Lighting:GetPropertyChangedSignal("FogStart"):Connect(removeFog)
+        Lighting:GetPropertyChangedSignal("FogColor"):Connect(removeFog)
+        Lighting.Changed:Connect(removeFog)
     end
 })
 
@@ -1387,27 +1560,27 @@ local Button = Tab:Button({
     Callback = function()
   _G.Settings = {
     Players = {
-        ["Ignore Me"] = true, -- Ignore your Character
-        ["Ignore Others"] = true -- Ignore other Characters
+        ["Ignore Me"] = true, 
+        ["Ignore Others"] = true 
     },
     Meshes = {
-        Destroy = false, -- Destroy Meshes
-        LowDetail = true -- Low detail meshes (NOT SURE IT DOES ANYTHING)
+        Destroy = false, 
+        LowDetail = true 
     },
     Images = {
-        Invisible = true, -- Invisible Images
-        LowDetail = false, -- Low detail images (NOT SURE IT DOES ANYTHING)
-        Destroy = false, -- Destroy Images
+        Invisible = true, 
+        LowDetail = false, 
+        Destroy = false, 
     },
     Other = {
-        ["No Particles"] = true, -- Disables all ParticleEmitter, Trail, Smoke, Fire and Sparkles
-        ["No Camera Effects"] = true, -- Disables all PostEffect's (Camera/Lighting Effects)
-        ["No Explosions"] = true, -- Makes Explosion's invisible
-        ["No Clothes"] = true, -- Removes Clothing from the game
-        ["Low Water Graphics"] = true, -- Removes Water Quality
-        ["No Shadows"] = true, -- Remove Shadows
-        ["Low Rendering"] = true, -- Lower Rendering
-        ["Low Quality Parts"] = true -- Lower quality parts
+        ["No Particles"] = true, 
+        ["No Camera Effects"] = true,
+        ["No Explosions"] = true, 
+        ["No Clothes"] = true, 
+        ["Low Water Graphics"] = true, 
+        ["No Shadows"] = true, 
+        ["Low Rendering"] = true, 
+        ["Low Quality Parts"] = true 
     }
 }
 loadstring(game:HttpGet("https://raw.githubusercontent.com/CasperFlyModz/discord.gg-rips/main/FPSBooster.lua"))()
@@ -1421,6 +1594,7 @@ local Input = Tab:Input({
     InputIcon = "square-pen",
     Type = "Input",
     Placeholder = "Enter FPS cap",
+    Flag = "FPSCapInput",
     Callback = function(text) 
         local num = tonumber(text)
         if num then
@@ -1435,6 +1609,7 @@ local Input = Tab:Input({
         end
     end
 })
+myConfig:Register("FPSCapInput", FPSCapInput)
 
 local Button = Tab:Button({
     Title = "Performance Stats",
@@ -1463,14 +1638,14 @@ local Button = Tab:Button({
             WindUI:Notify({
     Title = "Copied",
     Content = "Jobid Copied to Clipboard",
-    Duration = 3, -- 3 seconds
+    Duration = 3, 
     Icon = "clipboard-check",
 })
         else
                         WindUI:Notify({
     Title = "Failed",
     Content = "Copy Failed",
-    Duration = 3, -- 3 seconds
+    Duration = 3, 
     Icon = "clipboard-x",
 })
         end
@@ -1480,19 +1655,20 @@ local Button = Tab:Button({
 local Input = Tab:Input({
     Title = "Join Server",
     Desc = "Join a server with a jobID",
-    Value = "",                      -- start empty so it doesn't try to teleport automatically
+    Value = "",     
     InputIcon = "id-card",
-    Type = "Input", -- or "Textarea"
+    Type = "Input", 
     Placeholder = "JobId",
+    Flag = "JoinServerInput",
     Callback = function(Text) 
-        local JobIdTextBoxValue = Text  -- Use actual user input
+        local JobIdTextBoxValue = Text  
         
         local placeId = game.PlaceId
         
-        -- Only teleport if input is not empty and not default placeholder text
+       
         if JobIdTextBoxValue ~= "" and JobIdTextBoxValue:lower() ~= "jobid" then
             local success, errorMessage = pcall(function()
-                game:GetService("TeleportService"):TeleportToPlaceInstance(placeId, JobIdTextBoxValue, game.Players.LocalPlayer)
+                TeleportService:TeleportToPlaceInstance(placeId, JobIdTextBoxValue, LocalPlayer)
             end)
             if not success then
                 warn("Teleport failed: " .. tostring(errorMessage))
@@ -1502,25 +1678,14 @@ local Input = Tab:Input({
         end
     end
 })
+myConfig:Register("JoinServerInput", JoinServerInput)
 
 local Button = Tab:Button({
     Title = "Rejoin",
     Desc = "Rejoin same server",
     Locked = false,
     Callback = function()
-        local ts = game:GetService("TeleportService")
-
-
-
-local p = game:GetService("Players").LocalPlayer
-
-
-
-
-
-
-
-ts:TeleportToPlaceInstance(game.PlaceId, game.JobId, p)
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
     end
 })
 
@@ -1529,25 +1694,22 @@ local Button = Tab:Button({
     Desc = "Changes your server",
     Locked = false,
     Callback = function()
-        local TeleportService = game:GetService("TeleportService")
-local HttpService = game:GetService("HttpService")
+        local Servers = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+        local Server, Next = nil, nil
+        local function ListServers(cursor)
+            local Raw = game:HttpGet(Servers .. ((cursor and "&cursor=" .. cursor) or ""))
+            return HttpService:JSONDecode(Raw)
+        end
 
-local Servers = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
-local Server, Next = nil, nil
-local function ListServers(cursor)
-    local Raw = game:HttpGet(Servers .. ((cursor and "&cursor=" .. cursor) or ""))
-    return HttpService:JSONDecode(Raw)
-end
+        repeat
+            local ServerList = ListServers(Next)
+            Server = ServerList.data[math.random(1, (#ServerList.data / 3))]
+            Next = ServerList.nextPageCursor
+        until Server
 
-repeat
-    local Servers = ListServers(Next)
-    Server = Servers.data[math.random(1, (#Servers.data / 3))]
-    Next = Servers.nextPageCursor
-until Server
-
-if Server.playing < Server.maxPlayers and Server.id ~= game.JobId then
-    TeleportService:TeleportToPlaceInstance(game.PlaceId, Server.id, game.Players.LocalPlayer)
-end
+        if Server.playing < Server.maxPlayers and Server.id ~= game.JobId then
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, Server.id, LocalPlayer)
+        end
     end
 })
 
@@ -1556,6 +1718,41 @@ local Tab = Window:Tab({
     Icon = "wrench",
     Locked = false,
 })
+
+-- State
+local antiAfkEnabled = false
+local antiAfkConnection
+
+local Toggle = Tab:Toggle({
+    Title = "Anti AFK",
+    Desc = "Prevents you from getting kicked for being idle",
+    Icon = "bird",
+    Type = "Checkbox",
+    Value = false,
+    Flag = "AntiAFKToggle",
+    Callback = function(state)
+        antiAfkEnabled = state
+        print("Anti AFK:", state)
+
+        if state then
+            -- Enable Anti-AFK
+            antiAfkConnection = player.Idled:Connect(function()
+                if not antiAfkEnabled then return end
+
+                VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+                task.wait(1)
+                VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+            end)
+        else
+            -- Disable Anti-AFK
+            if antiAfkConnection then
+                antiAfkConnection:Disconnect()
+                antiAfkConnection = nil
+            end
+        end
+    end
+})
+myConfig:Register("AntiAFKToggle", Toggle)
 
 local Button = Tab:Button({
     Title = "Keyboard",
@@ -1579,13 +1776,175 @@ Window:Divider()
 
 local Tab = Window:Tab({
     Title = "Settings",
-    Icon = "cog", -- optional
-    Locked = false,
+    Icon = "cog", 
+    Locked = true,
 })
 
-local Section = Tab:Section({ 
-    Title = "Nothing here yet", -- optional
-    Desc = "More features coming soon!", -- optional
+local pendingConfigName = ""
+
+local ConfigNameInput = Tab:Input({
+    Title = "Config Name",
+    Desc = "Enter a name for the config",
+    Locked = false,
+    Value = "",
+    InputIcon = "bird",
+    Type = "Input",
+    Placeholder = "MyConfig",
+    Callback = function(input)
+        pendingConfigName = input
+    end
+})
+
+Tab:Button({
+    Title = "Create Config",
+    Desc = "Create a new config with this name",
+    Locked = false,
+    Callback = function()
+        if pendingConfigName ~= "" then
+            myConfig = ConfigManager:CreateConfig(pendingConfigName)
+            ConfigManager:Save(pendingConfigName)
+            WindUI:Notify({
+                Title = "Created",
+                Content = "Config '" .. pendingConfigName .. "' created successfully",
+                Duration = 2,
+                Icon = "check"
+            })
+            pendingConfigName = ""
+            ConfigNameInput.Value = ""
+            -- Refresh all dropdown lists
+            SaveDropdown.Values = GetConfigs()
+            DeleteDropdown.Values = GetConfigs()
+            LoadDropdown.Values = GetConfigs()
+        else
+            WindUI:Notify({
+                Title = "Error",
+                Content = "Please enter a config name",
+                Duration = 2,
+                Icon = "ban"
+            })
+        end
+    end
+})
+
+local function GetConfigs()
+    local list = {}
+    for _, name in pairs(ConfigManager:AllConfigs()) do
+        table.insert(list, name)
+    end
+    table.sort(list)
+    return list
+end
+
+local SaveDropdown
+SaveDropdown = Tab:Dropdown({
+    Title = "Save Config",
+    Desc = "Select config to save",
+    Locked = false,
+    Values = GetConfigs(),
+    Value = GetConfigs()[1] or "No Configs",
+    Callback = function(option)
+        SaveDropdown.Selected = option
+    end
+})
+
+Tab:Button({
+    Title = "Save",
+    Desc = "Save selected config",
+    Locked = false,
+    Callback = function()
+        if SaveDropdown.Selected and SaveDropdown.Selected ~= "No Configs" then
+            ConfigManager:Save(SaveDropdown.Selected)
+            SaveDropdown.Values = GetConfigs()
+            WindUI:Notify({
+                Title = "Saved",
+                Content = "Config saved successfully",
+                Duration = 2,
+                Icon = "check"
+            })
+        else
+            WindUI:Notify({
+                Title = "Error",
+                Content = "Please select a valid config",
+                Duration = 2,
+                Icon = "ban"
+            })
+        end
+    end
+})
+
+local DeleteDropdown
+DeleteDropdown = Tab:Dropdown({
+    Title = "Delete Config",
+    Desc = "Select config to delete",
+    Locked = false,
+    Values = GetConfigs(),
+    Value = GetConfigs()[1] or "No Configs",
+    Callback = function(option)
+        DeleteDropdown.Selected = option
+    end
+})
+
+Tab:Button({
+    Title = "Delete",
+    Desc = "Delete selected config",
+    Locked = false,
+    Callback = function()
+        if DeleteDropdown.Selected and DeleteDropdown.Selected ~= "No Configs" then
+            ConfigManager:Delete(DeleteDropdown.Selected)
+            DeleteDropdown.Values = GetConfigs()
+            SaveDropdown.Values = GetConfigs()
+            LoadDropdown.Values = GetConfigs()
+            WindUI:Notify({
+                Title = "Deleted",
+                Content = "Config deleted successfully",
+                Duration = 2,
+                Icon = "check"
+            })
+        else
+            WindUI:Notify({
+                Title = "Error",
+                Content = "Please select a valid config",
+                Duration = 2,
+                Icon = "ban"
+            })
+        end
+    end
+})
+
+local LoadDropdown
+LoadDropdown = Tab:Dropdown({
+    Title = "Load Config",
+    Desc = "Select config to load",
+    Locked = false,
+    Values = GetConfigs(),
+    Value = GetConfigs()[1] or "No Configs",
+    Callback = function(option)
+        LoadDropdown.Selected = option
+    end
+})
+
+Tab:Button({
+    Title = "Load",
+    Desc = "Load selected config",
+    Locked = false,
+    Callback = function()
+        if LoadDropdown.Selected and LoadDropdown.Selected ~= "No Configs" then
+            ConfigManager:Load(LoadDropdown.Selected)
+            WindUI:Notify({
+                Title = "Loaded",
+                Content = "Config loaded successfully",
+                Duration = 2,
+                Icon = "check"
+            })
+        else
+            WindUI:Notify({
+                Title = "Error",
+                Content = "Please select a valid config",
+                Duration = 2,
+                Icon = "ban"
+            })
+        end
+    end
 })
 
 loadstring(game:HttpGet("https://raw.githubusercontent.com/yeahblxr/Scripts/refs/heads/main/Notifications.lua"))()
