@@ -166,7 +166,7 @@ Window:Tag({
 })
 
 Window:Tag({
-    Title = "V1.6.1",
+    Title = "V1.6.2",
     Color = Color3.fromHex("#663399")
 })
 
@@ -292,7 +292,29 @@ local Tab = Window:Tab({
     Locked = false,
 })
 
-local Slider = Tab:Slider({
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer
+
+local speedValue = 16
+local jumpValue = 50
+local statEnabled = false
+local connection = nil
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer
+
+local speedValue = 16
+local jumpValue = 50
+
+local speedConnection = nil
+local jumpConnection = nil
+
+
+local WalkspeedSlider = Tab:Slider({
     Title = "Walkspeed",
     Step = 2,
     Flag = "WalkspeedSlider",
@@ -302,12 +324,38 @@ local Slider = Tab:Slider({
         Default = 16,
     },
     Callback = function(value)
-        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = value
+        speedValue = value
     end
 })
-myConfig:Register("WalkspeedSlider", Slider)
 
-local Slider = Tab:Slider({
+
+
+local WalkspeedToggle = Tab:Toggle({
+    Title = "Enable Walkspeed",
+    Desc = "Loop set WalkSpeed",
+    Type = "Checkbox",
+    Value = false,
+    Callback = function(state)
+
+        if state then
+            speedConnection = RunService.Heartbeat:Connect(function()
+                local char = LocalPlayer.Character
+                if char and char:FindFirstChild("Humanoid") then
+                    char.Humanoid.WalkSpeed = speedValue
+                end
+            end)
+        else
+            if speedConnection then
+                speedConnection:Disconnect()
+                speedConnection = nil
+            end
+        end
+    end
+})
+
+Tab:Divider()
+
+local JumppowerSlider = Tab:Slider({
     Title = "Jumppower",
     Step = 10,
     Flag = "JumppowerSlider",
@@ -317,10 +365,36 @@ local Slider = Tab:Slider({
         Default = 50,
     },
     Callback = function(value)
-        game.Players.LocalPlayer.Character.Humanoid.JumpPower = value
+        jumpValue = value
     end
 })
-myConfig:Register("JumppowerSlider", Slider)
+
+
+
+local JumppowerToggle = Tab:Toggle({
+    Title = "Enable Jumppower",
+    Desc = "Loop set JumpPower",
+    Type = "Checkbox",
+    Value = false,
+    Callback = function(state)
+
+        if state then
+            jumpConnection = RunService.Heartbeat:Connect(function()
+                local char = LocalPlayer.Character
+                if char and char:FindFirstChild("Humanoid") then
+                    char.Humanoid.JumpPower = jumpValue
+                end
+            end)
+        else
+            if jumpConnection then
+                jumpConnection:Disconnect()
+                jumpConnection = nil
+            end
+        end
+    end
+})
+
+Tab:Divider()
 
 local infiniteJumpConnection
 
@@ -1069,6 +1143,113 @@ myConfig:Register("HitboxColorInput", HitboxColorInput)
 
 Tab:Divider()
 
+
+local selectedPlayer = nil
+local constantTP = false
+local connection = nil
+
+-- Get player names
+local function getPlayerList()
+    local list = {}
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            table.insert(list, player.Name)
+        end
+    end
+    return list
+end
+
+local function teleportToPlayer(targetName)
+    local target = Players:FindFirstChild(targetName)
+    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character:MoveTo(target.Character.HumanoidRootPart.Position)
+    end
+end
+
+
+local selectedPlayer = nil
+
+local Dropdown = Tab:Dropdown({
+    Title = "Select Player",
+    Desc = "Choose a player to teleport to",
+    Values = getPlayerList(),
+    Value = nil,
+    Callback = function(option)
+        selectedPlayer = option
+        print("Selected player: " .. option)
+    end
+})
+
+local function RefreshDropdown()
+    local updatedList = getPlayerList()
+    Dropdown:Refresh(updatedList, true)
+
+    if selectedPlayer and table.find(updatedList, selectedPlayer) then
+        Dropdown:Set(selectedPlayer)
+    else
+        selectedPlayer = nil
+    end
+end
+
+Players.PlayerAdded:Connect(function()
+    task.wait(0.5)
+    RefreshDropdown()
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    task.wait(0.5)
+    RefreshDropdown()
+
+    if selectedPlayer == player.Name then
+        selectedPlayer = nil
+    end
+end)
+
+Players.PlayerAdded:Connect(function()
+    Dropdown:Refresh(getPlayerList(), true)
+end)
+
+Players.PlayerRemoving:Connect(function()
+    Dropdown:Refresh(getPlayerList(), true)
+end)
+
+
+local Button = Tab:Button({
+    Title = "Teleport To Player",
+    Desc = "Teleports once to selected player",
+    Locked = false,
+    Callback = function()
+        if selectedPlayer then
+            teleportToPlayer(selectedPlayer)
+        end
+    end
+})
+
+
+local Toggle = Tab:Toggle({
+    Title = "Loop TP",
+    Desc = "Continuously teleport to selected player",
+    Icon = "repeat",
+    Type = "Checkbox",
+    Value = false,
+    Callback = function(state)
+        constantTP = state
+
+        if constantTP then
+            connection = RunService.Heartbeat:Connect(function()
+                if selectedPlayer then
+                    teleportToPlayer(selectedPlayer)
+                end
+            end)
+        else
+            if connection then
+                connection:Disconnect()
+                connection = nil
+            end
+        end
+    end
+})
+
 local Tab = Window:Tab({
     Title = "Fun",
     Icon = "joystick",
@@ -1213,10 +1394,12 @@ local SkidFling = function(TargetPlayer)
 end
 
 
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
 local function GetPlayerNames()
     local names = {}
 
-    
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer then
             table.insert(names, plr.Name)
@@ -1224,27 +1407,49 @@ local function GetPlayerNames()
     end
 
     table.sort(names)
-
-    table.insert(names, 1, "All") 
+    table.insert(names, 1, "All")
 
     return names
 end
 
-
-local SelectedTarget = nil
+local SelectedTarget = "All"
 
 local Dropdown = Tab:Dropdown({
     Title = "Select Player to Fling",
     Values = GetPlayerNames(),
     Value = "All",
     Callback = function(selectedName)
-        if selectedName == "All" then
-            SelectedTarget = "All"
-        else
-            SelectedTarget = selectedName
-        end
+        SelectedTarget = selectedName
     end
 })
+
+-- 🔹 Auto update function
+local function RefreshDropdown()
+    local currentSelection = SelectedTarget
+    local updatedList = GetPlayerNames()
+
+    Dropdown:Refresh(updatedList, true)
+
+    -- Restore selection if still valid
+    if table.find(updatedList, currentSelection) then
+        Dropdown:Set(currentSelection)
+    else
+        SelectedTarget = "All"
+        Dropdown:Set("All")
+    end
+end
+
+-- 🔹 Auto update when players join
+Players.PlayerAdded:Connect(function()
+    task.wait(0.5)
+    RefreshDropdown()
+end)
+
+-- 🔹 Auto update when players leave
+Players.PlayerRemoving:Connect(function()
+    task.wait(0.5)
+    RefreshDropdown()
+end)
 
 Players.PlayerAdded:Connect(function(plr)
     local v = Dropdown.Values
@@ -1322,163 +1527,143 @@ myConfig:Register("AutoFlingToggle", Toggle)
 
 Tab:Divider()
 
+
+-- Get player names (excluding yourself)
 local function getPlayerNames()
     local playerNames = {}
-    local localPlayer = game.Players.LocalPlayer
-    
-    for _, player in pairs(game.Players:GetPlayers()) do
-        if player ~= localPlayer then
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
             table.insert(playerNames, player.Name)
         end
     end
-    
+
     if #playerNames == 0 then
         return {"No Players Available"}
     end
-    
+
     return playerNames
 end
 
 local isSpectating = false
-local spectateConnection = nil
-local originalCFrame = nil
+local originalSubject = nil
 local currentSpectateTarget = nil
 local SpectateDropdown = nil
+local SpectateToggle = nil
 
-local function spectatePlayer(playerName)
-    if playerName == "No Players Available" then
-        print("No players available to spectate")
-        return
-    end
-    
-    local targetPlayer = Players:FindFirstChild(playerName)
-    
-    if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        if isSpectating then
-            stopSpectating()
-        end
-        
-        if not originalCFrame then
-            originalCFrame = Camera.CFrame
-        end
-        
-        Camera.CameraSubject = targetPlayer.Character.Humanoid
-        Camera.CameraType = Enum.CameraType.Custom
-        
-        currentSpectateTarget = targetPlayer
-        isSpectating = true
-        
-        print("Now spectating: " .. playerName)
-    else
-        print("Could not find player or player's character: " .. playerName)
-    end
-end
-
+-- Stop spectating
 local function stopSpectating()
     if isSpectating then
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
             Camera.CameraSubject = LocalPlayer.Character.Humanoid
         end
-        
-        if originalCFrame then
-            Camera.CFrame = originalCFrame
-            originalCFrame = nil
-        end
-        
+
         Camera.CameraType = Enum.CameraType.Custom
-        
+
         isSpectating = false
         currentSpectateTarget = nil
-        
+
+        if SpectateToggle then
+            SpectateToggle:Set(false)
+        end
+
         print("Stopped spectating")
     end
 end
 
+-- Start spectating
+local function spectatePlayer(playerName)
+    if playerName == "No Players Available" then
+        warn("No players available")
+        return
+    end
+
+    local targetPlayer = Players:FindFirstChild(playerName)
+
+    if targetPlayer 
+        and targetPlayer.Character 
+        and targetPlayer.Character:FindFirstChild("Humanoid") then
+
+        Camera.CameraSubject = targetPlayer.Character.Humanoid
+        Camera.CameraType = Enum.CameraType.Custom
+
+        currentSpectateTarget = targetPlayer
+        isSpectating = true
+
+        print("Now spectating: " .. playerName)
+    else
+        warn("Could not spectate player")
+        stopSpectating()
+    end
+end
+
+-- Update dropdown
 local function updatePlayerDropdown()
     local newPlayerNames = getPlayerNames()
-    
+
     if SpectateDropdown then
-        -- Update existing dropdown values instead of recreating
-        SpectateDropdown.Values = newPlayerNames
+        SpectateDropdown:Refresh(newPlayerNames, true)
     else
-        -- Only create if it doesn't exist
         SpectateDropdown = Tab:Dropdown({
             Title = "Spectate Player",
             Values = newPlayerNames,
-            Value = "None",
-            Callback = function(option) 
-                if option == "None" then
-                    stopSpectating()
-                    return
-                end
-                print("Player selected: " .. option)
-                spectatePlayer(option)
+            Value = nil,
+            Callback = function(option)
+                print("Selected: " .. option)
+                -- Does NOT auto spectate anymore
             end
         })
     end
 end
 
--- Initialize dropdown on first load
-updatePlayerDropdown()
+-- Create Toggle
+SpectateToggle = Tab:Toggle({
+    Title = "Spectate",
+    Desc = "Toggle spectating selected player",
+    Type = "Checkbox",
+    Value = false,
+    Callback = function(state)
 
-local StopSpectateButton = Tab:Button({
-    Title = "Stop Spectating",
-    Desc = "Return camera to your character",
-    Locked = false,
-    Callback = function()
-        stopSpectating()
+        if state then
+            if SpectateDropdown and SpectateDropdown.Value then
+                spectatePlayer(SpectateDropdown.Value)
+            else
+                warn("No player selected")
+                SpectateToggle:Set(false)
+            end
+        else
+            stopSpectating()
+        end
     end
 })
 
-Players.PlayerAdded:Connect(function(player)
-    task.wait(1) 
-    updatePlayerDropdown()
-end)
-
-Players.PlayerRemoving:Connect(function(player)
-    updatePlayerDropdown()
-end)
-
+-- Refresh button
 local RefreshButton = Tab:Button({
     Title = "Refresh Player List",
-    Desc = "Update the spectate dropdown with current players",
+    Desc = "Update spectate dropdown",
     Locked = false,
     Callback = function()
         updatePlayerDropdown()
     end
 })
 
-local AutoFlingEnabled = false
+-- Player joins
+Players.PlayerAdded:Connect(function()
+    task.wait(1)
+    updatePlayerDropdown()
+end)
 
-local Toggle = Tab:Toggle({
-    Title = "Auto Fling",
-    Desc = "Automatically fling the selected player repeatedly",
-    Icon = "refresh-ccw", 
-    Type = "Checkbox",
-    Value = false,
-    Flag = "AutoFlingToggle",
-    Callback = function(state)
-        AutoFlingEnabled = state
+-- Player leaves (auto disable if target leaves)
+Players.PlayerRemoving:Connect(function(player)
+    updatePlayerDropdown()
 
-        task.spawn(function()
-            while AutoFlingEnabled do
-                if SelectedTarget then
-                    if SelectedTarget == "All" then
-                        for _, targetPlayer in ipairs(Players:GetPlayers()) do
-                            if targetPlayer ~= LocalPlayer then
-                                SkidFling(targetPlayer)
-                            end
-                        end
-                    else
-                        local tp = Players:FindFirstChild(SelectedTarget)
-                        if tp then SkidFling(tp) end
-                    end
-                end
-                task.wait(1.5)
-            end
-        end)
+    if currentSpectateTarget and player == currentSpectateTarget then
+        stopSpectating()
     end
-})
+end)
+
+-- Initialize dropdown
+updatePlayerDropdown()
 
 local Tab = Window:Tab({
     Title = "Visuals",
