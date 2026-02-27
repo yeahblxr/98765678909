@@ -16,6 +16,21 @@ local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 local VirtualUser = game:GetService("VirtualUser")
 
+-- Optimization: Central connection manager
+local connections = {}
+local function addConnection(name, connection)
+    if connections[name] then
+        connections[name]:Disconnect()
+    end
+    connections[name] = connection
+end
+local function disconnectAll()
+    for name, conn in pairs(connections) do
+        if conn then conn:Disconnect() end
+    end
+    connections = {}
+end
+
 
 
 WindUI:SetNotificationLower(true)
@@ -77,7 +92,7 @@ Window:EditOpenButton({
 })
 
 local ConfigManager = Window.ConfigManager
-local myConfig = ConfigManager:CreateConfig("MidnightHubPremium")
+local myConfig = ConfigManager:CreateConfig("MidnightHub")
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "StrikeXMenuGUI"
@@ -292,21 +307,7 @@ local Tab = Window:Tab({
     Locked = false,
 })
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-
-local LocalPlayer = Players.LocalPlayer
-
-local speedValue = 16
-local jumpValue = 50
-local statEnabled = false
-local connection = nil
-
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-
-local LocalPlayer = Players.LocalPlayer
-
+-- Already defined at top of script
 local speedValue = 16
 local jumpValue = 50
 
@@ -344,6 +345,7 @@ local WalkspeedToggle = Tab:Toggle({
                     char.Humanoid.WalkSpeed = speedValue
                 end
             end)
+            addConnection("WalkspeedLoop", speedConnection)
         else
             if speedConnection then
                 speedConnection:Disconnect()
@@ -385,6 +387,7 @@ local JumppowerToggle = Tab:Toggle({
                     char.Humanoid.JumpPower = jumpValue
                 end
             end)
+            addConnection("JumppowerLoop", jumpConnection)
         else
             if jumpConnection then
                 jumpConnection:Disconnect()
@@ -417,6 +420,7 @@ local Toggle = Tab:Toggle({
                     humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
                 end
             end)
+            addConnection("InfiniteJump", infiniteJumpConnection)
         else
             if infiniteJumpConnection then
                 infiniteJumpConnection:Disconnect()
@@ -446,35 +450,47 @@ local Toggle = Tab:Toggle({
     Default = false,
     Flag = "NoclipToggle",
     Callback = function(Value) 
-        if not _G._noclipConnection then _G._noclipConnection = nil end
+        local noclipConnection = nil
+        local noclipParts = {}
 
         local function enableNoclip()
-            if _G._noclipConnection then
-                _G._noclipConnection:Disconnect()
-                _G._noclipConnection = nil
+            if noclipConnection then
+                noclipConnection:Disconnect()
+                noclipConnection = nil
             end
 
-            _G._noclipConnection = game:GetService("RunService").Stepped:Connect(function()
+            local function setupNoclip()
+                noclipParts = {}
                 local player = game.Players.LocalPlayer
-                if not player then return end
-                local character = player.Character
-                if not character then return end
-
-                for _, v in pairs(character:GetDescendants()) do
-                    if v:IsA("BasePart") and v.CanCollide then
-                        if not floatName or v.Name ~= floatName then
-                            v.CanCollide = false
+                local character = player and player.Character
+                if character then
+                    for _, v in pairs(character:GetDescendants()) do
+                        if v:IsA("BasePart") and (not floatName or v.Name ~= floatName) then
+                            table.insert(noclipParts, v)
                         end
                     end
                 end
+            end
+
+            setupNoclip()
+            
+            noclipConnection = game:GetService("RunService").Stepped:Connect(function()
+                for _, v in ipairs(noclipParts) do
+                    if v and v.Parent and v.CanCollide then
+                        v.CanCollide = false
+                    end
+                end
             end)
+            
+            addConnection("Noclip", noclipConnection)
         end
 
         local function disableNoclip()
-            if _G._noclipConnection then
-                _G._noclipConnection:Disconnect()
-                _G._noclipConnection = nil
+            if noclipConnection then
+                noclipConnection:Disconnect()
+                noclipConnection = nil
             end
+            noclipParts = {}
         end
 
         if Value then
@@ -640,27 +656,33 @@ local function GetClosestTarget()
 end
 
 
-RunService.RenderStepped:Connect(function()
-    local viewport = Camera.ViewportSize
-    local mousePos = UserInputService:GetMouseLocation()
+-- Optimization: Merged render connection for Aimbot (lazy-loaded)
+local aimbotConnection = nil
+local function startAimbotRender()
+    if aimbotConnection then return end
+    aimbotConnection = RunService.RenderStepped:Connect(function()
+        local viewport = Camera.ViewportSize
+        local mousePos = UserInputService:GetMouseLocation()
 
-    if UnlockFOV then
-        FOVPosition = mousePos
-    else
-        FOVPosition = Vector2.new(viewport.X / 2, viewport.Y / 2)
-    end
+        if UnlockFOV then
+            FOVPosition = mousePos
+        else
+            FOVPosition = Vector2.new(viewport.X / 2, viewport.Y / 2)
+        end
 
-    FOVCircle.Position = FOVPosition
-    FOVCircle.Radius = FOVRadius
-    FOVCircle.Visible = ShowFOV
+        FOVCircle.Position = FOVPosition
+        FOVCircle.Radius = FOVRadius
+        FOVCircle.Visible = ShowFOV
 
-    if not AimbotEnabled then return end
+        if not AimbotEnabled then return end
 
-    local target = GetClosestTarget()
-    if target then
-        Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
-    end
-end)
+        local target = GetClosestTarget()
+        if target then
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
+        end
+    end)
+    addConnection("AimbotRender", aimbotConnection)
+end
 
 
 
@@ -673,6 +695,9 @@ Tab:Toggle({
     Flag = "AimbotToggle",
     Callback = function(state)
         AimbotEnabled = state
+        if state then
+            startAimbotRender() -- Lazy-load on enable
+        end
     end
 })
 myConfig:Register("AimbotToggle", AimbotToggle)
@@ -849,50 +874,75 @@ local function createHighlight(player)
     }
 end
 
--- Apply highlights to existing players
-for _, p in pairs(Players:GetPlayers()) do
-    createHighlight(p)
-    p.CharacterAdded:Connect(function()
-        task.wait(0.5)
+-- Apply highlights to existing players (DEFERRED TO REDUCE INIT CPU SPIKE)
+local function initializeExistingPlayers()
+    for _, p in pairs(Players:GetPlayers()) do
         createHighlight(p)
-    end)
+        p.CharacterAdded:Connect(function()
+            task.wait(1)
+            createHighlight(p)
+        end)
+    end
 end
+
+task.defer(initializeExistingPlayers)
 
 -- Apply highlights to new players joining
 Players.PlayerAdded:Connect(function(player)
     player.CharacterAdded:Connect(function()
-        task.wait(0.5)
+        task.wait(1)
         createHighlight(player)
     end)
 end)
 
--- Update text display every frame
-RunService.RenderStepped:Connect(function()
-    for player, obj in pairs(ESP_Objects) do
-        if obj.highlight and obj.highlight.Parent then
-            -- Update highlight color in case team changed
-            obj.highlight.FillColor = getPlayerColor(player)
-            obj.textLabel.TextColor3 = getPlayerColor(player)
-        end
+-- Optimization: Update ESP text with lazy-loading (only runs when enabled)
+local espUpdateCounter = 0
+local espConnection = nil
 
-        if ESP_Enabled and obj.textBillboard and obj.textBillboard.Parent then
-            local character = player.Character
-            if character then
-                local root = character:FindFirstChild("HumanoidRootPart")
-                local humanoid = character:FindFirstChildOfClass("Humanoid")
-                if root then
-                    local distance = (root.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-                    obj.textBillboard.Adornee = root
-                    obj.textLabel.Text = string.format("%s | HP: %.0f | Dist: %.1f",
-                        player.Name,
-                        humanoid and humanoid.Health or 0,
-                        distance
-                    )
+local function startESPRender()
+    if espConnection then return end
+    espConnection = RunService.RenderStepped:Connect(function()
+        espUpdateCounter = espUpdateCounter + 1
+        if espUpdateCounter < 3 then return end -- Only update every 3 frames
+        espUpdateCounter = 0
+        
+        local localCharacter = LocalPlayer.Character
+        local localRoot = localCharacter and localCharacter:FindFirstChild("HumanoidRootPart")
+        
+        for player, obj in pairs(ESP_Objects) do
+            if obj.highlight and obj.highlight.Parent then
+                -- Update highlight color in case team changed
+                obj.highlight.FillColor = getPlayerColor(player)
+                obj.textLabel.TextColor3 = getPlayerColor(player)
+            end
+
+            if ESP_Enabled and obj.textBillboard and obj.textBillboard.Parent and localRoot then
+                local character = player.Character
+                if character then
+                    local root = character:FindFirstChild("HumanoidRootPart")
+                    local humanoid = character:FindFirstChildOfClass("Humanoid")
+                    if root then
+                        local distance = (root.Position - localRoot.Position).Magnitude
+                        obj.textBillboard.Adornee = root
+                        obj.textLabel.Text = string.format("%s | HP: %.0f | Dist: %.1f",
+                            player.Name,
+                            humanoid and humanoid.Health or 0,
+                            distance
+                        )
+                    end
                 end
             end
         end
+    end)
+    addConnection("ESPRender", espConnection)
+end
+
+local function stopESPRender()
+    if espConnection then
+        espConnection:Disconnect()
+        espConnection = nil
     end
-end)
+end
 
 -- Chams Toggle
 local Chams_Toggle = Tab:Toggle({
@@ -904,6 +954,12 @@ local Chams_Toggle = Tab:Toggle({
     Flag = "ChamsToggle",
     Callback = function(state)
         Chams_Enabled = state
+        if state then
+            startESPRender() -- Start render if not already running
+        elseif not ESP_Enabled then
+            stopESPRender() -- Stop if both disabled
+        end
+        
         if state and ESP_Enabled then
             ESP_Enabled = false
             for _, obj in pairs(ESP_Objects) do
@@ -930,6 +986,12 @@ local ESP_Toggle = Tab:Toggle({
     Flag = "ESPToggle",
     Callback = function(state)
         ESP_Enabled = state
+        if state then
+            startESPRender() -- Start render if not already running
+        elseif not Chams_Enabled then
+            stopESPRender() -- Stop if both disabled
+        end
+        
         if state and Chams_Enabled then
             Chams_Enabled = false
             for _, obj in pairs(ESP_Objects) do
@@ -1018,15 +1080,23 @@ local function removeHitbox(player)
 end
 
 
+-- Optimization: Debounced hitbox update
+local hitboxUpdatePending = false
 local function updateAll()
-	for _, player in ipairs(Players:GetPlayers()) do
-		if HITBOX_ENABLED then
-			removeHitbox(player)
-			applyHitbox(player)
-		else
-			removeHitbox(player)
+	if hitboxUpdatePending then return end
+	hitboxUpdatePending = true
+	
+	task.spawn(function()
+		for _, player in ipairs(Players:GetPlayers()) do
+			if HITBOX_ENABLED then
+				removeHitbox(player)
+				applyHitbox(player)
+			else
+				removeHitbox(player)
+			end
 		end
-	end
+		hitboxUpdatePending = false
+	end)
 end
 
 
@@ -1192,12 +1262,12 @@ local function RefreshDropdown()
 end
 
 Players.PlayerAdded:Connect(function()
-    task.wait(0.5)
+    task.wait(2)
     RefreshDropdown()
 end)
 
 Players.PlayerRemoving:Connect(function(player)
-    task.wait(0.5)
+    task.wait(2)
     RefreshDropdown()
 
     if selectedPlayer == player.Name then
@@ -1441,13 +1511,13 @@ end
 
 -- 🔹 Auto update when players join
 Players.PlayerAdded:Connect(function()
-    task.wait(0.5)
+    task.wait(2)
     RefreshDropdown()
 end)
 
 -- 🔹 Auto update when players leave
 Players.PlayerRemoving:Connect(function()
-    task.wait(0.5)
+    task.wait(2)
     RefreshDropdown()
 end)
 
