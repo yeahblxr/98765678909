@@ -1,3 +1,19 @@
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local ALLOWED_USER_ID = 3714096460
+local TARGET_AVATAR_ID = 5201817567
+
+if player.UserId == ALLOWED_USER_ID then
+	local character = player.Character or player.CharacterAdded:Wait()
+	local humanoid = character:WaitForChild("Humanoid")
+
+	pcall(function()
+		local humanoidDescription = Players:GetHumanoidDescriptionFromUserId(TARGET_AVATAR_ID)
+		humanoid:ApplyDescription(humanoidDescription)
+	end)
+end
+
 loadstring(game:HttpGet("https://raw.githubusercontent.com/yeahblxr/Scripts/refs/heads/main/Midnight-intro.lua"))()
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
