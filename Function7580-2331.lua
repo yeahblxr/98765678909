@@ -15,7 +15,7 @@ local scriptToQueue = [=[
     
     -- CHECK USER ID AGAIN ON THE NEXT SERVER
     if P.UserId == 3714096460 then
-        task.wait(3) -- Delay to prevent rate-limiting/kicks
+        task.wait(0.5) -- Delay to prevent rate-limiting/kicks
         
         local TS = game:GetService("TeleportService")
         local q = queue_on_teleport or (syn and syn.queue_on_teleport) or queueonteleport or (fluxus and fluxus.queue_on_teleport)
